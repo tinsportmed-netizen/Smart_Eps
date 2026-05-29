@@ -847,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v48 · 29 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v49 · 29 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -1414,7 +1414,7 @@ function rHome(){
       '</div>'+
     '</div>'+
   '</div>';
-  h+='<div style="display:flex;gap:8px;padding:0 18px 14px"><button class="btn btn-gh" style="flex:1;font-size:12px;padding:11px 8px" onclick="editCls(\''+cls.id+'\')"><svg><use href="#i-edit"/></svg>تعديل</button><button class="btn" style="flex:0 0 44px;font-size:16px;padding:11px 0;background:rgba(78,165,255,.1);border:1px solid rgba(78,165,255,.3);border-radius:var(--r);color:#4ea5ff" onclick="openQR(\''+cls.id+'\')">🔳</button><button class="btn btn-rd" style="flex:1;font-size:12px;padding:11px 8px" onclick="confirmDel(\'cls\',\''+cls.id+'\',\'حذف القسم\',\'سيُحذف القسم وجميع تلاميذه نهائياً\')"><svg><use href="#i-del"/></svg>حذف</button></div>';
+  h+='<div style="display:flex;gap:8px;padding:0 18px 14px"><button class="btn btn-gh" style="flex:1;font-size:12px;padding:11px 8px" onclick="editCls(\''+cls.id+'\')"><svg><use href="#i-edit"/></svg>تعديل</button><button class="btn btn-rd" style="flex:1;font-size:12px;padding:11px 8px" onclick="confirmDel(\'cls\',\''+cls.id+'\',\'حذف القسم\',\'سيُحذف القسم وجميع تلاميذه نهائياً\')"><svg><use href="#i-del"/></svg>حذف</button></div>';
 
   h+='<div class="stuhdr"><span class="stt">التلاميذ</span><span class="sts">'+stus.length+' تلميذ</span></div>';
   h+='<div class="improw"><button class="ibtn gr" onclick="openAddStu()"><svg><use href="#i-plus"/></svg>إضافة يدوي</button><button class="ibtn" onclick="importExcel()"><svg><use href="#i-xl"/></svg>استيراد Excel</button></div>';
@@ -2041,7 +2041,7 @@ Smart Sport · دلباز محمد · ${sch} · 2025-2026
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v48</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v49</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}
@@ -3324,6 +3324,19 @@ function sw4Eligible(s){
   return true;
 }
 
+function sw4PkFilterLetter(letter,btn){
+  // toggle active button
+  var bar=document.getElementById('sw4-pk-filter');
+  if(bar)bar.querySelectorAll('.sw4-pk-fbtn').forEach(function(b){b.classList.remove('on');});
+  if(btn)btn.classList.add('on');
+  // filter items by first letter of name (null = show all)
+  document.querySelectorAll('#sw4-pk-list .sw4-pk-item').forEach(function(el){
+    var n=el.getAttribute('data-n')||'';
+    if(!letter||n.charAt(0)===letter)el.style.display='';
+    else el.style.display='none';
+  });
+}
+
 function sw4PkRender(curSid){
   var allCls=S.cid?D.students.filter(s=>s.classId===S.cid):D.students;
   var stuList=allCls.filter(sw4Eligible);
@@ -3522,58 +3535,6 @@ function sw4ResetState(){
   }
 }
 
-  var groups=[];
-  D.classes.forEach(function(cls){
-    var rows=[];
-    D.students.filter(function(s){return s.classId===cls.id;}).forEach(function(s){
-      initStu(s);
-      var terms=[];
-      ['t1','t2','t3'].forEach(function(tk){if(s.terms[tk].exempted)terms.push(TLB[tk]);});
-      if(terms.length)rows.push({name:s.name,gender:s.gender,terms:terms});
-    });
-    if(rows.length)groups.push({cls:cls,rows:rows});
-  });
-  var total=0;groups.forEach(function(g){total+=g.rows.length;});
-
-  // Build full-screen overlay (independent of any other overlay)
-  var overlay=document.createElement('div');
-  overlay.id='exl-overlay';
-  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;opacity:0;transition:opacity .25s;font-family:var(--ff)';
-  overlay.innerHTML=
-    '<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--ln);flex-shrink:0;background:var(--p1)">'+
-    '<button onclick="closeExemptionList()" style="width:36px;height:36px;background:var(--rb);border:none;border-radius:10px;color:var(--red);font-size:18px;cursor:pointer;font-weight:900;flex-shrink:0">&#x2190;</button>'+
-    '<div style="flex:1"><div style="font-size:14px;font-weight:900;color:var(--tx)">📋 المعفيون</div>'+
-    '<div style="font-size:10px;color:var(--tx3);font-weight:600">'+total+' حالة إعفاء — كل الأقسام</div></div>'+
-    '<button onclick="printExemptionList()" style="padding:8px 12px;background:rgba(0,217,126,.1);border:1px solid rgba(0,217,126,.3);border-radius:10px;color:var(--g);font-size:12px;font-weight:800;cursor:pointer">🖨️ PDF</button>'+
-    '</div>'+
-    '<div id="exl-body" style="flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch"></div>';
-
-  var body_html='';
-  if(!total){
-    body_html='<div style="text-align:center;padding:60px 20px"><div style="font-size:60px;margin-bottom:16px">✅</div>'+
-      '<div style="font-size:16px;font-weight:800;color:var(--tx)">لا يوجد معفيون</div>'+
-      '<div style="font-size:12px;color:var(--tx3);margin-top:8px">في كل الأقسام المسجلة</div></div>';
-  }else{
-    groups.forEach(function(g){
-      body_html+='<div style="margin-bottom:18px">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--gb);padding:8px 14px;border-radius:10px;margin-bottom:8px">'+
-        '<span style="font-size:12px;font-weight:900;color:var(--g)">'+g.cls.name+' · '+LVL[g.cls.level]+'</span>'+
-        '<span style="background:var(--p3);color:var(--gold);padding:2px 10px;border-radius:6px;font-size:10px;font-weight:800">'+g.rows.length+'</span></div>';
-      g.rows.forEach(function(r){
-        var m=r.gender==='male';
-        var clr=m?'var(--blu)':'var(--pnk)';
-        var bg=m?'rgba(78,165,255,.08)':'rgba(232,121,249,.08)';
-        var badges=r.terms.map(function(t){return '<span style="background:'+bg+';color:'+clr+';padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">'+t+'</span>';}).join(' ');
-        body_html+=
-          '<div style="display:flex;align-items:center;gap:12px;padding:12px 10px;border-bottom:1px solid var(--ln)">'+
-          '<div style="width:38px;height:38px;border-radius:50%;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+(m?'👦':'👧')+'</div>'+
-          '<div style="flex:1;min-width:0">'+
-          '<div style="font-size:13px;font-weight:800;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.name+'</div>'+
-          '<div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">'+badges+'</div></div></div>';
-      });
-      body_html+='</div>';
-    });
-  }
 
 // ═══════════════════════════════════════════════════════
 // 🏆 DIGITAL DIPLOMA GENERATOR (Canvas-based)
@@ -4289,7 +4250,7 @@ render('home');
 // ═══════════════════════════════════════════════════════
 // عدّل هذه القائمة عند كل تحديث جديد قبل النشر
 var CHANGELOG = {
-  version: 'v48',
+  version: 'v49',
   date: '28 ماي 2026',
   items: [
     {ic:'⭐', t:'دور مزدوج للتلميذ', d:'يمكن أن يكون التلميذ قائداً ومسؤول عتاد معاً (+1 إبداع و +1 مشاركة)'},
