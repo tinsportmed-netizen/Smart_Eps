@@ -847,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v45 · 28 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v48 · 29 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -1239,6 +1239,7 @@ function cloudDownload(){
     if(!confirm('تنزيل النسخة السحابية سيستبدل بياناتك الحالية على هذا الجهاز. متابعة؟'))return;
     try{
       D=JSON.parse(raw);
+      normalizeAll();
       localStorage.setItem('ss_v3',JSON.stringify(D));
       toast('✅ تم التنزيل','استُعيدت بياناتك السحابية','su',2500);
       setTimeout(function(){nav('home');},600);
@@ -1248,8 +1249,12 @@ function cloudDownload(){
 function GC(id){return D.classes.find(c=>c.id===id);}
 function GS(id){return D.students.find(s=>s.id===id);}
 function GSC(cid){return D.students.filter(s=>s.classId===cid);}
-function initStu(s){if(!s.terms)s.terms={};['t1','t2','t3'].forEach(k=>{if(!s.terms[k])s.terms[k]={exempted:false,actF:null,actJ:null,mc:{ses:[2,2,2,2,2,2,2],discipline:2,participation:0,creativity:0,mcEntered:false},fard:{tr:[],jg:null},test:{tr:[],jg:null}};else{var _mc=s.terms[k].mc;if(_mc.mcEntered===undefined)_mc.mcEntered=false;if(_mc.discipline===undefined||_mc.discipline===null)_mc.discipline=2;if(_mc.ses&&_mc.ses.length&&_mc.ses.every(function(v){return v===0;}))_mc.ses=[2,2,2,2,2,2,2];}});}
+function initStu(s){if(!s.terms)s.terms={};['t1','t2','t3'].forEach(k=>{if(!s.terms[k])s.terms[k]={exempted:false,actF:null,actJ:null,mc:{ses:[2,2,2,2,2,2,2],discipline:2,participation:0,creativity:0,mcEntered:false,_discTouched:false},fard:{tr:[],jg:null},test:{tr:[],jg:null}};else{var _mc=s.terms[k].mc;if(_mc.mcEntered===undefined)_mc.mcEntered=false;if(_mc.discipline===undefined||_mc.discipline===null)_mc.discipline=2;else if(_mc.discipline===0&&!_mc._discTouched)_mc.discipline=2;if(_mc.ses&&_mc.ses.length&&_mc.ses.every(function(v){return v===0;}))_mc.ses=[2,2,2,2,2,2,2];}});}
 function uid(){return '_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);}
+// Guarantee every student is fully initialized (discipline always defaults to 2)
+function normalizeAll(){
+  if(D&&Array.isArray(D.students)){D.students.forEach(function(s){initStu(s);});}
+}
 function calcMCRaw(t){const behSum=(parseFloat(t.mc.discipline)||0)+(parseFloat(t.mc.participation)||0)+(parseFloat(t.mc.creativity)||0);return Math.min(20,t.mc.ses.reduce((a,b)=>a+b,0)+behSum);}
 function calcMC(t){if(!t.mc.mcEntered)return null;return calcMCRaw(t);}
 function lookup(perf,g,lv,akey){const sc=D.scales[akey]?.[g]?.[lv];const ac=AF[akey];if(!sc||isNaN(perf)||perf<=0)return null;const{top,bot}=sc;let r;if(ac.t==='time'){if(perf<=top)return 20;if(perf>=bot)return 0;r=1-(perf-top)/(bot-top);}else{if(perf>=top)return 20;if(perf<=bot)return 0;r=(perf-bot)/(top-bot);}return Math.round(r*20*4)/4;}
@@ -1324,11 +1329,22 @@ window.addEventListener('popstate',function(e){
     return;
   }
 
-  // 2) Otherwise navigate screens using the popped history state
-  var target = (e.state && e.state.scr) ? e.state.scr : 'home';
-  _navInternal = true;
-  nav(target);
-  _navInternal = false;
+  // 2) Otherwise navigate screens
+  var cur=S.scr;
+  var target=null;
+  if(cur==='s-mc'||cur==='s-ev'||cur==='s-ann')target='s-stu';
+  else if(cur==='s-stu')target='home';
+  else if(cur&&cur!=='home')target='home';
+  else target=null;
+
+  if(target){
+    _navInternal=true;
+    nav(target);
+    _navInternal=false;
+    try{ history.pushState({scr:target},'',location.href); }catch(e){}
+  } else {
+    try{ history.pushState({scr:'home'},'',location.href); }catch(e){}
+  }
 });
 
 // Initialize history with a guard entry so the first back press stays in-app
@@ -1438,7 +1454,7 @@ function rHome(){
             '<div class="sme">'+(s.gender==='male'?'ذكر 👦':'أنثى 👧')+(s.phone?' · '+s.phone:'')+'</div>'+
           '</div>'+
           '<div style="display:flex;align-items:center;margin-left:4px">'+scoreHtml+'</div>'+
-          (!isAllEx(s)?'<button class="cap-btn'+(s.captain?' on':s.equipment?' eq':'')+'" onclick="event.stopPropagation();openRoleMenu(\''+s.id+'\',this)" title="تعيين دور">'+(s.captain?'👑':s.equipment?'🎒':'○')+'</button>'+
+          (!isAllEx(s)?'<button class="cap-btn'+((s.captain&&s.equipment)?' on':s.captain?' on':s.equipment?' eq':'')+'" onclick="event.stopPropagation();openRoleMenu(\''+s.id+'\',this)" title="تعيين دور">'+((s.captain&&s.equipment)?'⭐':s.captain?'👑':s.equipment?'🎒':'○')+'</button>'+
           '<div class="pcard-wrap">'+
             '<button class="pcard pc-g" onclick="event.stopPropagation();stuCard(\''+s.id+'\',\'g\')" title="مشاركة +0.25">🟢</button>'+
             '<button class="pcard pc-y" onclick="event.stopPropagation();stuCard(\''+s.id+'\',\'y\')" title="انضباط -0.25">🟡</button>'+
@@ -1527,7 +1543,7 @@ function sendMCWA(){
   window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank');
 }
 function rMC(){
-  const s=GS(S.sid);const t=s.terms[S.term];
+  const s=GS(S.sid);initStu(s);const t=s.terms[S.term];
   document.getElementById('mc-sub').textContent=s.name+' · '+TLB[S.term];
   const SL={2:'pr',0:'ab',1:'sk'};const ST={pr:'✓',ab:'A',sk:'M'};
   document.getElementById('ssg').innerHTML=t.mc.ses.map((v,i)=>{const st=SL[v]||'pr';return'<button class="ssc2 '+st+'" onclick="togSes('+i+')"><div class="scmk">'+ST[st]+'</div><div class="scnn">ح'+(i+1)+'</div></button>';}).join('');
@@ -1536,7 +1552,7 @@ function rMC(){
 }
 function fmtBeh(v){if(v===undefined||v===null)return'0';const n=parseFloat(v);if(n===Math.floor(n))return String(n);return n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');}
 function togSes(i){if(isLocked())return;const s=GS(S.sid);const t=s.terms[S.term];const cy=[2,0,1];const idx=cy.indexOf(t.mc.ses[i]);t.mc.ses[i]=cy[(idx+1)%3];SD();rMC();}
-function adjBeh(k,d){if(isLocked())return;const s=GS(S.sid);const t=s.terms[S.term];const cur=parseFloat(t.mc[k])||0;t.mc[k]=Math.round(Math.max(0,Math.min(2,cur+d))*100)/100;SD();const el=document.getElementById('bv-'+k);if(el)el.textContent=fmtBeh(t.mc[k]);updMCTot();}
+function adjBeh(k,d){if(isLocked())return;const s=GS(S.sid);initStu(s);const t=s.terms[S.term];const cur=parseFloat(t.mc[k])||0;t.mc[k]=Math.round(Math.max(0,Math.min(2,cur+d))*100)/100;if(k==='discipline')t.mc._discTouched=true;SD();const el=document.getElementById('bv-'+k);if(el)el.textContent=fmtBeh(t.mc[k]);updMCTot();}
 function updMCTot(){const s=GS(S.sid);const t=s.terms[S.term];const el=document.getElementById('mc-tot');if(el)el.textContent=fmt(calcMCRaw(t));}
 function saveMC(){if(isLocked())return;const s=GS(S.sid);s.terms[S.term].mc.mcEntered=true;snapshot('م.مستمرة');SD();toast('تم الحفظ','المراقبة المستمرة محفوظة');setTimeout(()=>nav('s-stu'),400);}
 
@@ -1858,7 +1874,7 @@ function exportColWord(){
 function rSettings(){document.getElementById('st-tc').value=D.settings.teacher||'';document.getElementById('st-sc').value=D.settings.school||'';document.getElementById('st-yr').value=D.settings.year||'';}
 function saveSettings(){D.settings.teacher=document.getElementById('st-tc').value.trim();D.settings.school=document.getElementById('st-sc').value.trim();D.settings.year=document.getElementById('st-yr').value.trim()||'2025-2026';SD();toast('تم الحفظ','تم حفظ المعلومات الشخصية');}
 function doBackup(){const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='SmartSport_'+(D.settings.school||'backup')+'_'+new Date().toISOString().split('T')[0]+'.json';a.click();toast('نسخة احتياطية','تم تنزيل ملف النسخة الاحتياطية');}
-function doRestore(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);if(!parsed.classes||!parsed.students)throw new Error('invalid');D=parsed;SD();nav('home');toast('تمت الاستعادة','تم استعادة البيانات بنجاح');}catch{toast('خطأ','ملف غير صالح','er');}};reader.readAsText(file);};inp.click();}
+function doRestore(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{try{const parsed=JSON.parse(ev.target.result);if(!parsed.classes||!parsed.students)throw new Error('invalid');D=parsed;normalizeAll();SD();nav('home');toast('تمت الاستعادة','تم استعادة البيانات بنجاح');}catch{toast('خطأ','ملف غير صالح','er');}};reader.readAsText(file);};inp.click();}
 
 // ACTIVITY SELECTOR
 function openActSel(){const acts=D.settings.acts;const fO=Object.entries(AF).map(([k,a])=>'<option value="'+k+'">'+a.ic+' '+a.n+'</option>').join('');const jO=Object.entries(AJ).map(([k,a])=>'<option value="'+k+'">'+a.ic+' '+a.n+'</option>').join('');document.getElementById('act-sel-body').innerHTML=['t1','t2','t3'].map(tk=>'<div class="ast"><div class="astt">'+TLB[tk]+'</div><div class="asr"><select class="ass" id="as-f-'+tk+'"><option value="">— فردي —</option>'+fO+'</select><select class="ass" id="as-j-'+tk+'"><option value="">— جماعي —</option>'+jO+'</select></div></div>').join('');['t1','t2','t3'].forEach(tk=>{const f=document.getElementById('as-f-'+tk);const j=document.getElementById('as-j-'+tk);if(f&&acts[tk].f)f.value=acts[tk].f;if(j&&acts[tk].j)j.value=acts[tk].j;});}
@@ -1882,7 +1898,7 @@ const c0=String(row[0]||'').trim();if(!c0||c0.length<2)return;const c1=String(ro
 if(c1&&!isGender(c1)&&isNaN(parseFloat(c1))&&c1.length>0){nm=(c0+' '+c1).trim();gCol=2;phCol=3;}const gc=String(row[gCol]||'').trim();const g=(gc.includes('أ')||gc.includes('إ')||gc.toLowerCase()==='f'||gc.toLowerCase()==='female')?'female':'male';const ph=String(row[phCol]||'').trim();const ns={id:'stu'+uid(),classId:S.cid,name:nm,gender:g,phone:ph,terms:{}};initStu(ns);D.students.push(ns);added++;});SD();rHome();toast('تم الاستيراد','تم إضافة '+added+' تلميذ');}catch(err){toast('خطأ','تعذّر قراءة الملف','er');}};reader.readAsBinaryString(file);};inp.click();}
 
 // CONFIRM DELETE
-function confirmDel(type,id,title,msg){document.getElementById('dc-t').textContent='⚠️ '+(title||'تأكيد الحذف');document.getElementById('dc-m').textContent=msg||'هذه العملية لا يمكن التراجع عنها';const btn=document.getElementById('dc-btn');btn.onclick=()=>{closeOv('ov-del');if(type==='cls')delCls(id);else if(type==='stu')delStu(id);else if(type==='reset'){localStorage.removeItem('ss_v3');D=LD();nav('home');toast('تم المسح','تم مسح جميع البيانات');}};openOv('ov-del');}
+function confirmDel(type,id,title,msg){document.getElementById('dc-t').textContent='⚠️ '+(title||'تأكيد الحذف');document.getElementById('dc-m').textContent=msg||'هذه العملية لا يمكن التراجع عنها';const btn=document.getElementById('dc-btn');btn.onclick=()=>{closeOv('ov-del');if(type==='cls')delCls(id);else if(type==='stu')delStu(id);else if(type==='reset'){localStorage.removeItem('ss_v3');D=LD();normalizeAll();nav('home');toast('تم المسح','تم مسح جميع البيانات');}};openOv('ov-del');}
 
 // MODAL
 function openOv(id){if(id==='ov-act')openActSel();var e=document.getElementById(id);if(e){e.style.display='flex';e.classList.add('on');}}
@@ -1924,125 +1940,108 @@ tr:nth-child(even)td{background:#f9faff}
 <div class="bar"><div><h1>📘 دليل Smart EPS</h1><small>${sch} · ${t}</small></div>
 <button class="btn-pr" onclick="window.print()">🖨️ طباعة</button></div>
 
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#eaffef">🏠</div><h2>الشاشة الرئيسية</h2></div>
-<p>تعرض شريط الأقسام أعلاه مع كروت الفصول الثلاثة + إحصائيات القسم السنوية.</p>
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#eaffef">🏠</div><h2>1 · الشاشة الرئيسية</h2></div>
+<p>هي نقطة البداية: شريط الأقسام في الأعلى، وكروت الفصول الثلاثة لكل قسم مع إحصائياته.</p>
 <div class="steps">
-<div class="step">اضغط <span class="badge bg">＋</span> لإضافة قسم جديد مع اسمه ومستواه</div>
-<div class="step">اضغط <span class="badge bb">⋮⋮⋮</span> لعرض كل الأقسام في شبكة كاملة (عند وجود 4+ أقسام)</div>
-<div class="step">اضغط على كرت أي فصل للدخول إليه وإدارة تلاميذه</div>
-<div class="step">زر <span class="badge bg">🔳 QR</span> بجانب كل قسم يولّد QR بمعلومات القسم</div>
+<div class="step">اضغط <span class="badge bg">＋</span> لإضافة قسم جديد (الاسم + المستوى)</div>
+<div class="step">اضغط على اسم أي تلميذ للدخول إلى ملفه</div>
+<div class="step">زر <span class="badge bb">🎙️</span> أعلى اليمين يفتح الإملاء الصوتي للحضور</div>
+<div class="step">زر <span class="badge bo">↩️</span> للتراجع عن آخر عملية، و <span class="badge bg">🌙</span> للوضع الليلي</div>
 </div></div>
 
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#e8f0ff">👤</div><h2>إدارة التلاميذ</h2></div>
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#e8f0ff">👤</div><h2>2 · تنقيط التلميذ</h2></div>
+<p>كل تلميذ له ثلاثة فصول، وكل فصل ثلاثة أعمدة للتقييم:</p>
 <div class="steps">
-<div class="step">من الشاشة الرئيسية → اضغط على اسم أي تلميذ للدخول لملفه</div>
 <div class="step">اختر الفصل: <span class="badge bb">الفصل 1</span> <span class="badge bo">الفصل 2</span> <span class="badge br">الفصل 3</span></div>
-<div class="step">اضغط <span class="badge bg">م.مستمرة</span> لإدخال نقاط الحصص والانضباط</div>
-<div class="step">اضغط <span class="badge bo">الفرض</span> أو <span class="badge bg">الاختبار</span> للتنقيط</div>
-<div class="step">تبويب <span class="badge bg">السنوي</span> يعرض المعدل السنوي + كشف كامل</div>
+<div class="step"><span class="badge bg">م. مستمرة</span>: الحصص + الانضباط + المشاركة + الإبداع</div>
+<div class="step"><span class="badge bo">الفرض</span> و <span class="badge bg">الاختبار</span>: المحاولات الرياضية + التقدير الجماعي</div>
+<div class="step"><span class="badge bg">السنوي</span>: المعدل السنوي والكشف الكامل</div>
 </div>
-<div class="tip">⚠️ نقاط م.م لا تظهر حتى تضغط <strong>💾 حفظ</strong> داخل شاشة المراقبة المستمرة</div></div>
+<div class="tip">💡 نقاط المراقبة المستمرة تُحفظ تلقائياً عند كل تعديل</div></div>
 
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fff0f0">⏱️</div><h2>كرونو 4 حارات — توقيت متوازٍ</h2></div>
-<p><strong>التشغيل:</strong></p>
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#f3e8ff">🎙️</div><h2>3 · الإملاء الصوتي للحضور</h2></div>
+<p>سجّل حضور القسم كله بصوتك دون فتح أي تلميذ — من زر 🎙️ في الرئيسية.</p>
 <div class="steps">
-<div class="step">اختر القسم والفصل والمحاولة والنوع من الأعلى</div>
-<div class="step">اختر تلميذاً لكل حارة عبر زر <span class="badge bo">👤 اختر تلميذاً</span></div>
-<div class="step">اضغط <span class="badge bo">🚀 انطلاق</span> لبدء التوقيت المتزامن</div>
-<div class="step">أوقف كل حارة عند وصول تلميذها بزر <span class="badge bo">🏁 إيقاف الحارة</span></div>
+<div class="step">اختر القسم من القائمة المنسدلة أعلى الشاشة</div>
+<div class="step">اضغط الميكروفون الكبير ثم نادِ: «الاسم + الحالة»</div>
+<div class="step">أمثلة: «براهمي أسماء حاضر» · «خالد غايب» · «أمين مريض»</div>
+<div class="step">كل نداء يُسجَّل في <strong>الحصة التالية</strong> لذلك التلميذ تلقائياً</div>
 </div>
-<p style="margin-top:10px"><strong>إيقاف بالصوت (فرنسي) — اختياري:</strong></p>
-<table><tr><th>الحارة</th><th>الكلمة الفرنسية</th><th>البدائل</th></tr>
-<tr><td>1</td><td><strong>un</strong></td><td>une, one</td></tr>
-<tr><td>2</td><td><strong>deux</strong></td><td>deu, de</td></tr>
-<tr><td>3</td><td><strong>trois</strong></td><td>troi, twa</td></tr>
-<tr><td>4</td><td><strong>quatre</strong></td><td>katr, kat</td></tr>
+<table><tr><th>الحالة</th><th>كلمات مقبولة (عربية + دارجة)</th></tr>
+<tr><td>🟢 حاضر</td><td>حاضر · جا · موجود · présent</td></tr>
+<tr><td>🟡 مريض</td><td>مريض · عيان · malade</td></tr>
+<tr><td>🔴 غائب</td><td>غائب · غايب · ما جاش · absent</td></tr>
 </table>
-<p style="margin-top:10px"><strong>المرحلة 3 — مفاتيح الصوت الفيزيائية:</strong></p>
-<table><tr><th>المفتاح</th><th>الحارة</th></tr>
-<tr><td><span class="key">🔊 Volume+</span></td><td>الحارة 1</td></tr>
-<tr><td><span class="key">🔉 Volume-</span></td><td>الحارة 2</td></tr>
-</table>
-<p style="margin-top:10px"><strong>المرحلة 4 — اللمس المباشر:</strong> اضغط مباشرة على بطاقة الحارة لإيقافها فوراً.</p>
-<div class="tip">💡 اختر التلاميذ أولاً من الحارات ← ابحث بالحرف الأول (بدون لوحة مفاتيح) ← انطلق</div></div>
+<div class="tip">📶 الإملاء الصوتي يحتاج إنترنت ومتصفح Chrome</div></div>
 
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fff8e6">📄</div><h2>كشوف PDF والطباعة</h2></div>
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fef9e7">🃏</div><h2>4 · البطاقات السلوكية</h2></div>
+<p>ثلاثة أزرار ملونة أمام كل تلميذ (تختفي للمعفيين):</p>
+<table><tr><th>البطاقة</th><th>الأثر</th></tr>
+<tr><td>🟢 خضراء</td><td>مشاركة +0.25 (حتى 2)</td></tr>
+<tr><td>🟡 صفراء</td><td>انضباط −0.25 (يبدأ من 2)</td></tr>
+<tr><td>🔴 حمراء</td><td>تسجيل غياب في أول حصة متاحة</td></tr>
+</table></div>
+
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fef5e4">👑</div><h2>5 · القيادة والمسؤوليات</h2></div>
+<p>زر الدور أمام كل تلميذ يفتح قائمة بأربعة خيارات:</p>
+<table><tr><th>الدور</th><th>المهام</th><th>المكافأة</th></tr>
+<tr><td>👑 قائد الفوج</td><td>إحماء · وقت · تسجيل</td><td>+1 إبداع</td></tr>
+<tr><td>🎒 مسؤول العتاد</td><td>إحضار · إعادة · جرد</td><td>+1 مشاركة</td></tr>
+<tr><td>⭐ قائد ومسؤول</td><td>الدورين معاً</td><td>+1 إبداع و +1 مشاركة</td></tr>
+<tr><td>○ بدون</td><td>—</td><td>إلغاء المهام</td></tr>
+</table>
+<p style="margin-top:8px">عند التعيين تفتح بطاقة المهام التفصيلية تلقائياً.</p>
+<div class="tip">⚠️ قائد واحد + مسؤول عتاد واحد لكل قسم — ويمكن أن يكونا نفس التلميذ (⭐)</div></div>
+
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fff0f0">⏱️</div><h2>6 · كرونومتر 4 حارات</h2></div>
+<p>توقيت أربعة تلاميذ في آنٍ واحد للأنشطة الزمنية (الجري).</p>
 <div class="steps">
-<div class="step">كشف فصل: من ملف التلميذ → الفصل → <span class="badge bb">📄 كشف الفصل</span></div>
+<div class="step">اختر القسم · الفصل · المحاولة · النوع من الشريط المضغوط أعلاه (ف1 · م1 · فرض)</div>
+<div class="step">اختر تلميذاً لكل حارة عبر <span class="badge bo">👤 اختر تلميذاً</span></div>
+<div class="step">اضغط <span class="badge bg">🚀 انطلاق</span> لبدء التوقيت المتزامن</div>
+<div class="step">أوقف كل حارة عند الوصول بزر <span class="badge br">🏁 إيقاف الحارة</span></div>
+<div class="step">اضغط <span class="badge bo">💾 حفظ وترحيل</span> لتسجيل التوقيتات في خانات التلاميذ</div>
+</div>
+<p style="margin-top:8px"><strong>الحذف الذكي:</strong> التلميذ الذي سُجِّل وقته يختفي تلقائياً من قائمة هذه المحاولة، ويبقى متاحاً للمحاولات الأخرى وللاختبار.</p>
+<div class="tip">💡 زر 👥 يفتح القائمة مع إمكانية التراجع الفردي عن توقيت أي تلميذ بالخطأ</div></div>
+
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fff8e6">📄</div><h2>7 · الكشوف والطباعة</h2></div>
+<div class="steps">
+<div class="step">كشف فصلي: من ملف التلميذ → <span class="badge bb">📄 كشف الفصل</span></div>
 <div class="step">كشف سنوي: تبويب السنوي → <span class="badge bg">📊 كشف سنوي</span></div>
-<div class="step">كل الأقسام: شاشة الأنشطة → زر <span class="badge br">🗄️</span> → كشوف PDF كاملة</div>
-<div class="step">كل صفحة تحتوي: اسم الثانوية + جدول النقاط + إمضاء <strong>دلباز محمد</strong> + مستشار + ناظر</div>
+<div class="step">كل الأقسام: شاشة الأنشطة → <span class="badge br">🗄️</span> → كشوف PDF و Excel كاملة</div>
+<div class="step">سلم التنقيط: شاشة سلم التنقيط → اختر نشاطاً → <span class="badge br">🖨️ PDF</span> أو <span class="badge bb">📘 Word</span></div>
 </div></div>
 
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#f5f0ff">📋</div><h2>قائمة المعفيين</h2></div>
-<p>من شاشة الأنشطة → زر <span class="badge bg">📋 المعفيون</span> → تفتح شاشة كاملة تعرض:</p>
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#f5f0ff">📋</div><h2>8 · المعفيون وشهادة التفوق</h2></div>
 <div class="steps">
-<div class="step">كل الأقسام مجمعة مع اسم القسم والمستوى</div>
-<div class="step">كل تلميذ مع الفصول التي أُعفي منها كشارات ملونة</div>
-<div class="step">زر <span class="badge bg">🖨️ PDF</span> يصدر قائمة رسمية بالإمضاءات الثلاثة</div>
+<div class="step"><strong>المعفيون:</strong> الأنشطة → <span class="badge bg">📋 المعفيون</span> → قائمة رسمية بكل الأقسام قابلة للطباعة</div>
+<div class="step"><strong>شهادة التفوق:</strong> في تبويب السنوي، تظهر تلقائياً عند معدل ≥ 18/20 → تنزيل PNG أو مشاركة</div>
 </div></div>
 
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fff0f0">🏆</div><h2>شهادة التفوق الرقمية</h2></div>
-<p>في تبويب <strong>السنوي</strong> لأي تلميذ — إذا حقق أحد الشروط:</p>
-<table><tr><th>الشرط</th><th>المعيار</th></tr>
-<tr><td>تفوق دراسي</td><td>معدل سنوي ≥ 18/20</td></tr>
-<tr><td>تفوق فصلي</td><td>معدل فصل ≥ 18/20</td></tr>
-<tr><td>حضور كامل</td><td>لا إعفاء + ناجح</td></tr>
-<tr><td>أداء رياضي</td><td>علامة فرض ≥ 18/20</td></tr>
-</table>
-<p style="margin-top:8px">يظهر زر <span class="badge bo">🏆 إصدار شهادة التفوق</span> تلقائياً → تنزيل PNG أو مشاركة واتساب</p></div>
-
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#eaffef">💾</div><h2>النسخ الاحتياطي والأرشيف</h2></div>
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#e8f0ff">🔒</div><h2>9 · حماية النقاط</h2></div>
+<p>من الإعدادات → زر <span class="badge bg">🔓 حماية نقاط التلاميذ</span>:</p>
 <div class="steps">
-<div class="step"><strong>نسخة JSON تلقائية:</strong> تُحفظ عند كل عملية حفظ</div>
-<div class="step"><strong>تصدير يدوي:</strong> الإعدادات → 💾 حفظ احتياطي JSON</div>
-<div class="step"><strong>أرشيف السنة:</strong> الأنشطة → 🗄️ → PDF كامل لكل الكشوف</div>
-<div class="step"><strong>استعادة:</strong> الإعدادات → 📂 استعادة من ملف JSON</div>
+<div class="step">عند التفعيل 🔒 تُمنع كل التعديلات على المراقبة والفرض والاختبار</div>
+<div class="step">يحميك من التغيير العرضي للنقاط أثناء التصفح</div>
+<div class="step">اضغط مجدداً لإلغاء الحماية والتعديل</div>
+</div></div>
+
+<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#e6f7ff">☁️</div><h2>10 · المزامنة والنسخ الاحتياطي</h2></div>
+<div class="steps">
+<div class="step"><strong>محلياً:</strong> كل بياناتك محفوظة على الهاتف وتعمل دون إنترنت</div>
+<div class="step"><strong>سحابياً (اختياري):</strong> الإعدادات → ☁️ سجّل الدخول → رفع/تنزيل نسختك بين أجهزتك</div>
+<div class="step"><strong>زر الرجوع:</strong> زر الهاتف يتنقّل داخل التطبيق ولا يُخرجك منه</div>
 </div>
-<div class="tip">⚠️ عند تغيير الهاتف — صدّر نسخة JSON مسبقاً</div></div>
-
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#e8f0ff">⚙️</div><h2>الإعدادات</h2></div>
-<div class="steps">
-<div class="step">اسم الأستاذ، المؤسسة، الموسم الدراسي</div>
-<div class="step">سلم التنقيط لكل نشاط (قابل للتعديل)</div>
-<div class="step">الوضع الليلي/النهاري: زر 🌙/🌞 في الشاشة الرئيسية</div>
-<div class="step">دليل المستخدم: زر 📘 في الإعدادات</div>
-</div></div>
-
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fef9e7">🃏</div><h2>نظام البطاقات السلوكية</h2></div>
-<p>في صف كل تلميذ — 3 أزرار ملونة (مخفية للمعفيين):</p>
-<table><tr><th>البطاقة</th><th>الأثر</th><th>الملاحظة</th></tr>
-<tr><td>🟢 خضراء</td><td>مشاركة +0.25</td><td>تصل 2 كحد أقصى</td></tr>
-<tr><td>🟡 صفراء</td><td>انضباط -0.25</td><td>تبدأ من 2، تصل 0</td></tr>
-<tr><td>🔴 حمراء</td><td>تسجيل غياب (A)</td><td>في أول خانة حصة متاحة</td></tr>
-</table>
-<div class="tip">💡 الانضباط يبدأ بـ 2/2 افتراضياً لكل تلميذ</div></div>
-
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#fef5e4">👑</div><h2>نظام القيادة والمسؤوليات</h2></div>
-<p>زران ظاهران أمام كل تلميذ (مخفيان للمعفيين):</p>
-<table><tr><th>الزر</th><th>الدور</th><th>المكافأة</th></tr>
-<tr><td>👑 / ○</td><td>قائد الفوج (إحماء + وقت + تسجيل)</td><td>+1 إبداع تلقائياً</td></tr>
-<tr><td>🎒 / ▣</td><td>مسؤول الوسائل (إحضار + إعادة + جرد)</td><td>+1 إبداع تلقائياً</td></tr>
-</table>
-<p style="margin-top:8px">عند التعيين: تفتح بطاقة مهام المسؤوليات التفصيلية تلقائياً</p>
-<div class="tip">⚠️ قائد واحد فقط + مسؤول وسائل واحد فقط لكل قسم في نفس الوقت</div></div>
-
-<div class="sec"><div class="sec-ttl"><div class="ic" style="background:#e8f8f5">🔄</div><h2>تحديث التطبيق</h2></div>
-<p>عند نشر تحديث جديد على Netlify:</p>
-<div class="steps">
-<div class="step">يظهر شريط أخضر تلقائياً في أسفل الشاشة: <span class="badge bg">🔄 تحديث جديد متاح!</span></div>
-<div class="step">اضغط على الشريط لتطبيق التحديث فوراً</div>
-<div class="step">إذا لم يظهر: أغلق التطبيق وأعد فتحه</div>
-</div>
-<p style="margin-top:8px">لإبلاغ أصدقائك: أرسل لهم رسالة يفتحون فيها التطبيق ويضغطون على الشريط الأخضر</p></div>
+<div class="tip">⚠️ قبل تغيير الهاتف: ارفع نسخة سحابية أو صدّر JSON من الإعدادات</div></div>
 
 <div style="text-align:center;padding:24px 16px;background:#0a1f0e;color:rgba(255,255,255,.5);font-size:11px">
-Smart EPS v5 · دلباز محمد · ثانوية سماحي بوعمامة · 2025-2026
+Smart Sport · دلباز محمد · ${sch} · 2025-2026
 </div>
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v45</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v48</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}
@@ -2987,7 +2986,7 @@ function updateUndoBtn(){
     if(cnt)cnt.style.display='none';
   }
 }
-function undo(){if(!HISTORY.length)return;const prev=HISTORY.pop();D=JSON.parse(prev.data);SD();rHome();updateUndoBtn();toast('تم التراجع','تراجع عن: '+prev.label);}
+function undo(){if(!HISTORY.length)return;const prev=HISTORY.pop();D=JSON.parse(prev.data);normalizeAll();SD();rHome();updateUndoBtn();toast('تم التراجع','تراجع عن: '+prev.label);}
 
 // INIT
 updPill('home');
@@ -3011,6 +3010,7 @@ function initTheme(){
     if(mc)mc.content='#f0f4f8';
   }
 }
+normalizeAll();
 initTheme();
 updateUndoBtn();
 
@@ -3892,18 +3892,16 @@ function stuCard(sid,color){
   initStu(stu);
   var tk=S.term||'t1';
   var mc=stu.terms[tk].mc;
-  // Ensure discipline starts at 2 for existing students
-  if(mc.discipline===0&&!mc._discSet)mc.discipline=2;
   if(color==='g'){
     var cur=Math.round((parseFloat(mc.participation)||0)*100)/100;
     if(cur>=2){toast('🟢',stu.name+' — المشاركة وصلت الحد الأقصى 2/2','wa',1500);return;}
     mc.participation=Math.min(2,Math.round((cur+0.25)*100)/100);
     toast('🟢 مشاركة',stu.name+' +0.25 ← '+mc.participation+'/2','su',1200);
   }else if(color==='y'){
-    var curD=Math.round((parseFloat(mc.discipline!==undefined?mc.discipline:2))*100)/100;
+    var curD=Math.round((parseFloat(mc.discipline)||0)*100)/100;
     if(curD<=0){toast('🟡',stu.name+' — الانضباط وصل الصفر','wa',1500);return;}
     mc.discipline=Math.max(0,Math.round((curD-0.25)*100)/100);
-    mc._discSet=true;
+    mc._discTouched=true;
     toast('🟡 انضباط',stu.name+' -0.25 ← '+mc.discipline+'/2','wa',1200);
   }else if(color==='r'){
     // Mark first available session as Absent
@@ -3951,23 +3949,27 @@ function openCaptainSheet(sid,role){
   ov.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.8);display:flex;justify-content:center;align-items:flex-end;backdrop-filter:blur(8px)';
   ov.onclick=function(e){if(e.target===ov)ov.remove();};
 
+  var isBoth=(role==='both');
   var isCaptain=(role==='captain');
-  var icon=isCaptain?'👑':'🎒';
-  var color=isCaptain?'var(--gold)':'#f39c12';
-  var bgColor=isCaptain?'rgba(218,165,32,.08)':'rgba(243,156,18,.08)';
-  var title=isCaptain?'بطاقة مهام القائد':'بطاقة مهام مسؤول الوسائل';
+  var icon=isBoth?'⭐':isCaptain?'👑':'🎒';
+  var color=isBoth?'#00d97e':isCaptain?'var(--gold)':'#f39c12';
+  var bgColor=isBoth?'rgba(0,217,126,.08)':isCaptain?'rgba(218,165,32,.08)':'rgba(243,156,18,.08)';
+  var title=isBoth?'بطاقة مهام القائد ومسؤول العتاد':isCaptain?'بطاقة مهام القائد':'بطاقة مهام مسؤول العتاد';
 
-  var tasks=isCaptain?[
+  var captainTasks=[
     {icon:'🏃',color:'var(--g)',title:'قيادة الإحماء',desc:'يقود '+stu.name+' الإحماء الديناميكي 7 دقائق قبل بداية الحصة ويوجّه الزملاء'},
     {icon:'⏱️',color:'var(--blu)',title:'إدارة الوقت',desc:'مسؤول عن توقيت المحطات وإبلاغ الأستاذ عند انتهاء كل جولة'},
     {icon:'📋',color:'var(--gold)',title:'تسجيل الأداء',desc:'يسجل نتائج زملائه في المحطات الفرعية ويقدم تقرير موجز للأستاذ'},
     {icon:'🤝',color:'var(--pnk)',title:'الوساطة والنظام',desc:'يتدخل كوسيط أولي في النزاعات البسيطة قبل إحالة الأمر للأستاذ'}
-  ]:[
-    {icon:'⚽',color:'#f39c12',title:'إحضار الوسائل',desc:'يتسلم مفتاح المخزن ويُخرج الكرات والشواخص والحبال وجميع الوسائل قبل الحصة'},
-    {icon:'🧹',color:'var(--blu)',title:'إعادة الوسائل',desc:'يجمع ويرتب ويُعيد كل الوسائل إلى المخزن بعد الحصة ويتحقق من اكتمال العدة'},
-    {icon:'📦',color:'var(--g)',title:'جرد الوسائل',desc:'يُبلغ الأستاذ فوراً عن أي وسيلة تالفة أو مفقودة ويدوّن الملاحظات'},
+  ];
+  var equipTasks=[
+    {icon:'⚽',color:'#f39c12',title:'إحضار العتاد',desc:'يتسلم مفتاح المخزن ويُخرج الكرات والشواخص والحبال وجميع الوسائل قبل الحصة'},
+    {icon:'🧹',color:'var(--blu)',title:'إعادة العتاد',desc:'يجمع ويرتب ويُعيد كل الوسائل إلى المخزن بعد الحصة ويتحقق من اكتمال العدة'},
+    {icon:'📦',color:'var(--g)',title:'جرد العتاد',desc:'يُبلغ الأستاذ فوراً عن أي وسيلة تالفة أو مفقودة ويدوّن الملاحظات'},
     {icon:'🔑',color:'var(--gold)',title:'حفظ مفتاح المخزن',desc:'مسؤول عن سلامة المفتاح طوال الحصة وتسليمه للأستاذ في نهايتها'}
   ];
+  var tasks=isBoth?captainTasks.concat(equipTasks):isCaptain?captainTasks:equipTasks;
+  var rewardTxt=isBoth?'+1 نقطة إبداع و +1 نقطة مشاركة':isCaptain?'+1 نقطة إبداع':'+1 نقطة مشاركة';
 
   var tasksHTML=tasks.map(function(t){
     return '<div style="background:var(--p2);border-radius:12px;padding:12px 14px;border-right:3px solid '+t.color+'">'+
@@ -3987,7 +3989,7 @@ function openCaptainSheet(sid,role){
     tasksHTML+
     '<div style="background:'+bgColor+';border-radius:12px;padding:10px 14px;border:1px solid '+color.replace('var(--gold)','rgba(218,165,32,.3)').replace('rgba(218,165,32,.08)','rgba(243,156,18,.3)')+'">'+
     '<div style="font-size:11px;font-weight:900;color:'+color+'">🏆 المكافأة التلقائية</div>'+
-    '<div style="font-size:12px;color:var(--tx2);margin-top:4px">تمت إضافة <strong>+1 نقطة إبداع</strong> في المراقبة المستمرة لهذا الفصل</div>'+
+    '<div style="font-size:12px;color:var(--tx2);margin-top:4px">تمت إضافة <strong>'+rewardTxt+'</strong> في المراقبة المستمرة لهذا الفصل</div>'+
     '</div></div></div>';
   document.body.appendChild(ov);
 }
@@ -4071,14 +4073,15 @@ function openRoleMenu(sid,btn){
   if(top+220>window.innerHeight)top=rect.top-230;
   menu.style.cssText='position:fixed;top:'+top+'px;left:'+left+'px;z-index:10000;background:var(--p1);border:1px solid var(--ln);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.4);min-width:200px;overflow:hidden;animation:oI .15s ease';
   var roles=[
-    {key:'none',   icon:'○',   label:'بدون دور',      sub:'إلغاء كل المهام',                color:'var(--tx3)'},
-    {key:'captain',icon:'👑',  label:'قائد الفوج',     sub:'إحماء · وقت · تسجيل +1إبداع',  color:'var(--gold)'},
-    {key:'equip',  icon:'🎒',  label:'مسؤول الوسائل',  sub:'إحضار · إعادة · جرد +1إبداع',  color:'#f39c12'}
+    {key:'none',   icon:'○',   label:'بدون دور',         sub:'إلغاء كل المهام',                    color:'var(--tx3)'},
+    {key:'captain',icon:'👑',  label:'قائد الفوج',        sub:'إحماء · وقت · تسجيل · +1 إبداع',     color:'var(--gold)'},
+    {key:'equip',  icon:'🎒',  label:'مسؤول العتاد',      sub:'إحضار · إعادة · جرد · +1 مشاركة',    color:'#f39c12'},
+    {key:'both',   icon:'⭐',  label:'قائد ومسؤول معاً',  sub:'+1 إبداع و +1 مشاركة',               color:'#00d97e'}
   ];
   roles.forEach(function(r){
     var item=document.createElement('div');
     item.className='role-item';
-    var cur=(r.key==='captain'&&stu.captain)||(r.key==='equip'&&stu.equipment)||(r.key==='none'&&!stu.captain&&!stu.equipment);
+    var cur=(r.key==='captain'&&stu.captain&&!stu.equipment)||(r.key==='equip'&&stu.equipment&&!stu.captain)||(r.key==='both'&&stu.captain&&stu.equipment)||(r.key==='none'&&!stu.captain&&!stu.equipment);
     item.style.background=cur?'rgba(0,217,126,.07)':'';
     item.innerHTML='<span class="ri-icon" style="color:'+r.color+'">'+r.icon+(cur?' ✓':'')+'</span><div><div class="ri-label">'+r.label+'</div><div class="ri-sub">'+r.sub+'</div></div>';
     item.onclick=function(){assignRole(sid,r.key);menu.remove();};
@@ -4098,27 +4101,33 @@ function assignRole(sid,role){
   initStu(stu);
   var tk=S.term||'t1';
   var mc=stu.terms[tk].mc;
-  // Remove old role bonus from this student
+  // Remove this student's current bonuses first
   if(stu.captain){mc.creativity=Math.max(0,(parseFloat(mc.creativity)||0)-1);}
-  if(stu.equipment){mc.creativity=Math.max(0,(parseFloat(mc.creativity)||0)-1);}
-  // Remove same role from other students in class
-  if(S.cid&&role!=='none'){
+  if(stu.equipment){mc.participation=Math.max(0,(parseFloat(mc.participation)||0)-1);}
+  // Determine new role flags
+  var wantCaptain=(role==='captain'||role==='both');
+  var wantEquip=(role==='equip'||role==='both');
+  // Enforce one captain / one equipment per class: remove same role from others
+  if(S.cid){
     D.students.filter(function(s){return s.classId===S.cid&&s.id!==sid;}).forEach(function(s){
-      initStu(s);
-      if(role==='captain'&&s.captain){s.captain=false;s.terms[tk].mc.creativity=Math.max(0,(parseFloat(s.terms[tk].mc.creativity)||0)-1);}
-      if(role==='equip'&&s.equipment){s.equipment=false;s.terms[tk].mc.creativity=Math.max(0,(parseFloat(s.terms[tk].mc.creativity)||0)-1);}
+      initStu(s);var omc=s.terms[tk].mc;
+      if(wantCaptain&&s.captain){s.captain=false;omc.creativity=Math.max(0,(parseFloat(omc.creativity)||0)-1);}
+      if(wantEquip&&s.equipment){s.equipment=false;omc.participation=Math.max(0,(parseFloat(omc.participation)||0)-1);}
     });
   }
-  stu.captain=false;stu.equipment=false;
-  if(role==='captain'){
-    stu.captain=true;
-    mc.creativity=Math.min(2,(parseFloat(mc.creativity)||0)+1);
+  stu.captain=wantCaptain;
+  stu.equipment=wantEquip;
+  if(wantCaptain)mc.creativity=Math.min(2,(parseFloat(mc.creativity)||0)+1);
+  if(wantEquip)mc.participation=Math.min(2,(parseFloat(mc.participation)||0)+1);
+
+  if(role==='both'){
+    toast('⭐ قائد ومسؤول',stu.name+' — إبداع +1 · مشاركة +1','su',2200);
+    openCaptainSheet(sid,'both');
+  }else if(role==='captain'){
     toast('👑 قائد الفوج',stu.name+' — إبداع +1','su',2000);
     openCaptainSheet(sid,'captain');
   }else if(role==='equip'){
-    stu.equipment=true;
-    mc.creativity=Math.min(2,(parseFloat(mc.creativity)||0)+1);
-    toast('🎒 مسؤول الوسائل',stu.name+' — إبداع +1','su',2000);
+    toast('🎒 مسؤول العتاد',stu.name+' — مشاركة +1','su',2000);
     openCaptainSheet(sid,'equip');
   }else{
     toast('○ بدون دور',stu.name,'wa',1200);
@@ -4275,6 +4284,62 @@ render('home');
 
 </script>
 <script>
+// ═══════════════════════════════════════════════════════
+// 🔄 PROFESSIONAL UPDATE MODAL (changelog + apply)
+// ═══════════════════════════════════════════════════════
+// عدّل هذه القائمة عند كل تحديث جديد قبل النشر
+var CHANGELOG = {
+  version: 'v48',
+  date: '28 ماي 2026',
+  items: [
+    {ic:'⭐', t:'دور مزدوج للتلميذ', d:'يمكن أن يكون التلميذ قائداً ومسؤول عتاد معاً (+1 إبداع و +1 مشاركة)'},
+    {ic:'🎒', t:'تصحيح مكافأة العتاد', d:'مسؤول العتاد يُكافأ الآن بنقطة مشاركة بدل الإبداع'},
+    {ic:'🎙️', t:'إملاء صوتي للحضور', d:'سجّل حضور القسم كله بصوتك دون فتح أي تلميذ — بالعربية والدارجة'},
+    {ic:'⏱️', t:'كرونومتر أوضح', d:'لوحة تحكم مضغوطة وكل الحارات ظاهرة لإيقاف أسرع'},
+    {ic:'🔒', t:'حماية النقاط', d:'قفل اختياري يمنع التعديل العرضي على نقاط التلاميذ'},
+    {ic:'☁️', t:'مزامنة سحابية', d:'رفع وتنزيل بياناتك بين أجهزتك (اختياري)'},
+    {ic:'📱', t:'زر الرجوع', d:'زر رجوع الهاتف يتنقّل داخل التطبيق ولا يُخرجك منه'}
+  ]
+};
+
+function showUpdateModal(){
+  if(document.getElementById('update-modal'))return;
+  var itemsHTML=CHANGELOG.items.map(function(it){
+    return '<div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--ln)">'+
+      '<span style="font-size:20px;flex-shrink:0">'+it.ic+'</span>'+
+      '<div><div style="font-size:13px;font-weight:800;color:var(--tx)">'+it.t+'</div>'+
+      '<div style="font-size:11px;color:var(--tx3);margin-top:2px;line-height:1.6">'+it.d+'</div></div></div>';
+  }).join('');
+  var ov=document.createElement('div');
+  ov.id='update-modal';
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(8,8,24,.92);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:20px;direction:rtl;font-family:var(--ff)';
+  ov.innerHTML=
+    '<div style="width:100%;max-width:380px;max-height:85vh;background:var(--p1);border:1px solid var(--ln);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;animation:oI .2s ease">'+
+      '<div style="padding:22px 20px 16px;background:linear-gradient(135deg,#00875a,#00d97e);text-align:center;flex-shrink:0">'+
+        '<div style="font-size:34px">🎉</div>'+
+        '<div style="font-size:18px;font-weight:900;color:#fff;margin-top:4px">تحديث جديد متاح!</div>'+
+        '<div style="font-size:12px;color:rgba(255,255,255,.85);font-weight:700;margin-top:2px">'+CHANGELOG.version+' · '+CHANGELOG.date+'</div>'+
+      '</div>'+
+      '<div style="padding:6px 20px;overflow-y:auto;flex:1">'+itemsHTML+'</div>'+
+      '<div style="padding:14px 20px 18px;flex-shrink:0;border-top:1px solid var(--ln)">'+
+        '<button onclick="applyUpdate()" style="width:100%;padding:15px;background:linear-gradient(135deg,#00875a,#00d97e);border:none;border-radius:13px;color:#fff;font-family:var(--ff);font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 4px 16px rgba(0,217,126,.3)">✅ تطبيق التحديث الآن</button>'+
+        '<button onclick="dismissUpdate()" style="width:100%;padding:10px;margin-top:8px;background:none;border:none;color:var(--tx3);font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer">لاحقاً</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+}
+function applyUpdate(){
+  try{
+    if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration){
+      navigator.serviceWorker.getRegistration().then(function(reg){
+        if(reg&&reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
+        setTimeout(function(){window.location.reload();},300);
+      });
+    }else{window.location.reload();}
+  }catch(e){window.location.reload();}
+}
+function dismissUpdate(){var m=document.getElementById('update-modal');if(m)m.remove();}
+
 if('serviceWorker' in navigator && location.hostname !== 'www.claudeusercontent.com' && location.protocol === 'https:'){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('./sw.js').then(function(reg){
@@ -4283,14 +4348,7 @@ if('serviceWorker' in navigator && location.hostname !== 'www.claudeusercontent.
         var nw=reg.installing;
         nw.addEventListener('statechange',function(){
           if(nw.state==='installed'&&navigator.serviceWorker.controller){
-            // Show update banner
-            var b=document.createElement('div');
-            b.id='update-banner';
-            b.style.cssText='position:fixed;bottom:72px;left:12px;right:12px;background:linear-gradient(135deg,#00875a,#00d97e);color:#fff;padding:14px 16px;border-radius:14px;font-weight:800;font-size:13px;z-index:99999;box-shadow:0 6px 24px rgba(0,0,0,.4);font-family:sans-serif;direction:rtl;display:flex;align-items:center;gap:10px';
-            b.innerHTML='<span style="font-size:22px">🔄</span><div style="flex:1"><div style="font-weight:900;font-size:13px">تحديث جديد متاح!</div><div style="font-size:10px;opacity:.85;margin-top:2px">جودة مشاركة الأدوار، بطاقات الأنشطة، تحسينات الكرونو</div></div><button onclick="window.location.reload()" style="background:rgba(255,255,255,.25);border:none;border-radius:8px;color:#fff;padding:8px 14px;font-weight:900;cursor:pointer;font-size:12px;white-space:nowrap">تطبيق</button>';
-            b.querySelector('button').onclick=function(){window.location.reload();};
-            document.body.appendChild(b);
-            setTimeout(function(){if(b.parentNode)b.parentNode.removeChild(b);},20000);
+            showUpdateModal();
           }
         });
       });

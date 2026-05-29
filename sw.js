@@ -1,9 +1,13 @@
 // Smart EPS Service Worker - Network First + Update Notification
-const CACHE = 'smart-eps-v45';
+const CACHE = 'smart-eps-v48';
 const APP_VERSION = '2.1';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
+});
+
+self.addEventListener('message', e => {
+  if(e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
