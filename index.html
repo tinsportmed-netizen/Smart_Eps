@@ -847,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v49 · 29 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v50 · 29 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -1286,7 +1286,6 @@ function toast(title,msg,type,dur){if(!type)type='su';if(!dur)dur=2800;const c=d
 
 // ROUTER
 const SMAP={home:'s-home',acts:'s-acts',scales:'s-scales',settings:'s-settings','s-stu':'s-stu','s-mc':'s-mc','s-ev':'s-ev','s-ann':'s-ann'};
-var _navInternal=false; // true when navigation is triggered by popstate (don't push)
 function nav(scr){
   var prevScr=S.scr;
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
@@ -1299,58 +1298,54 @@ function nav(scr){
   updPill(scr);
   render(scr);
   if(scr==='home'&&prevScr&&prevScr!=='home')setTimeout(function(){rfrmFocus(true);},300);
-  // Push a history entry for every screen change EXCEPT when responding to a back press
-  if(!_navInternal){
-    try{ history.pushState({scr:scr},'',location.href); }catch(e){}
-  }
 }
 
-// Phone hardware back button → navigate inside the app, never exit
+// ═══════════════════════════════════════════════════════
+// 📱 PHONE BACK BUTTON — reliable in-app navigation
+// Pattern: always keep ONE sentinel history entry on top.
+// Each back press consumes it → popstate fires → we navigate
+// one logical step back, then re-push the sentinel.
+// ═══════════════════════════════════════════════════════
+function _armBackGuard(){
+  try{ history.pushState({guard:true,t:Date.now()},'',location.href); }catch(e){}
+}
+
 window.addEventListener('popstate',function(e){
-  // 1) If any modal/overlay is open, close it first (don't change screen)
-  var closedSomething=false;
-  // full-screen modals
+  // 1) Close any open modal/overlay first (one back press = close one layer)
+  var closed=false;
   ['va-modal','sw4-modal','auth-modal','ov-iframe'].forEach(function(mid){
     var m=document.getElementById(mid);
     if(m&&(m.style.display==='flex'||m.style.display==='block')){
       m.style.display='none';
       if(mid==='va-modal'&&typeof vaStop==='function')vaStop();
-      if(mid==='sw4-modal'&&typeof closeSW4==='function'){/* closeSW4 sets display none already */}
-      closedSomething=true;
+      closed=true;
     }
   });
-  // generic overlays (.ov.on)
-  if(!closedSomething){
-    var openOvs=document.querySelectorAll('.ov.on');
-    if(openOvs.length){openOvs.forEach(function(o){o.classList.remove('on');});closedSomething=true;}
+  if(!closed){
+    var ovs=document.querySelectorAll('.ov.on');
+    if(ovs.length){ovs.forEach(function(o){o.classList.remove('on');});closed=true;}
   }
-  if(closedSomething){
-    try{ history.pushState({scr:S.scr||'home'},'',location.href); }catch(e){}
-    return;
-  }
+  if(closed){ _armBackGuard(); return; }
 
-  // 2) Otherwise navigate screens
+  // 2) Navigate one logical step back based on current screen
   var cur=S.scr;
-  var target=null;
-  if(cur==='s-mc'||cur==='s-ev'||cur==='s-ann')target='s-stu';
-  else if(cur==='s-stu')target='home';
-  else if(cur&&cur!=='home')target='home';
-  else target=null;
-
-  if(target){
-    _navInternal=true;
-    nav(target);
-    _navInternal=false;
-    try{ history.pushState({scr:target},'',location.href); }catch(e){}
-  } else {
-    try{ history.pushState({scr:'home'},'',location.href); }catch(e){}
+  if(cur==='s-mc'||cur==='s-ev'||cur==='s-ann'){
+    nav('s-stu');
+  }else if(cur==='s-stu'){
+    nav('home');
+  }else if(cur&&cur!=='home'){
+    nav('home');
   }
+  // else: already home → do nothing (stay in app)
+
+  // 3) Re-arm the sentinel so the NEXT back press also fires popstate (never exits)
+  _armBackGuard();
 });
 
-// Initialize history with a guard entry so the first back press stays in-app
+// Initialize: one real state + one sentinel on top
 try{
   history.replaceState({scr:'home'},'',location.href);
-  history.pushState({scr:'home'},'',location.href);
+  _armBackGuard();
 }catch(e){}
 function updPill(scr){const idx=MAIN.indexOf(scr);document.querySelectorAll('.ni').forEach(b=>b.classList.toggle('on',b.dataset.s===scr));const p=document.getElementById('np');if(idx>=0&&p){const w=100/4;p.style.width='calc('+w+'% - 4px)';p.style.right='calc('+idx*w+'% + 2px)';}}
 function render(scr){if(scr==='settings')setTimeout(function(){updLockUI();updateCloudUI();},50);if(scr==='home')rHome();else if(scr==='acts')rActs();else if(scr==='s-stu')rStu();else if(scr==='s-mc')rMC();else if(scr==='s-ev')rEval();else if(scr==='s-ann')rAnnual();else if(scr==='scales')rScales();else if(scr==='settings')rSettings();}
@@ -2041,7 +2036,7 @@ Smart Sport · دلباز محمد · ${sch} · 2025-2026
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v49</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v50</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}
@@ -4250,7 +4245,7 @@ render('home');
 // ═══════════════════════════════════════════════════════
 // عدّل هذه القائمة عند كل تحديث جديد قبل النشر
 var CHANGELOG = {
-  version: 'v49',
+  version: 'v50',
   date: '28 ماي 2026',
   items: [
     {ic:'⭐', t:'دور مزدوج للتلميذ', d:'يمكن أن يكون التلميذ قائداً ومسؤول عتاد معاً (+1 إبداع و +1 مشاركة)'},
