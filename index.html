@@ -847,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v50 · 29 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v53 · 29 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -1286,6 +1286,10 @@ function toast(title,msg,type,dur){if(!type)type='su';if(!dur)dur=2800;const c=d
 
 // ROUTER
 const SMAP={home:'s-home',acts:'s-acts',scales:'s-scales',settings:'s-settings','s-stu':'s-stu','s-mc':'s-mc','s-ev':'s-ev','s-ann':'s-ann'};
+
+// Back-button parent map: which screen each screen returns to
+var BACK_PARENT={'s-mc':'s-stu','s-ev':'s-stu','s-ann':'s-stu','s-stu':'home','acts':'home','scales':'home','settings':'home'};
+
 function nav(scr){
   var prevScr=S.scr;
   document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
@@ -1301,17 +1305,19 @@ function nav(scr){
 }
 
 // ═══════════════════════════════════════════════════════
-// 📱 PHONE BACK BUTTON — reliable in-app navigation
-// Pattern: always keep ONE sentinel history entry on top.
-// Each back press consumes it → popstate fires → we navigate
-// one logical step back, then re-push the sentinel.
+// 📱 PHONE BACK BUTTON (PWA standalone safe)
+// Strategy: keep EXACTLY ONE guard entry on top at all times.
+// Each back press consumes the guard → popstate fires → we move
+// one logical step back in the app, then immediately re-arm the
+// guard. History is always exactly 1 deep, so the OS can never
+// run out and close the app.
 // ═══════════════════════════════════════════════════════
-function _armBackGuard(){
-  try{ history.pushState({guard:true,t:Date.now()},'',location.href); }catch(e){}
+function _armGuard(){
+  try{ history.pushState({g:1},'',location.href); }catch(e){}
 }
 
 window.addEventListener('popstate',function(e){
-  // 1) Close any open modal/overlay first (one back press = close one layer)
+  // 1) Close any open modal/overlay first
   var closed=false;
   ['va-modal','sw4-modal','auth-modal','ov-iframe'].forEach(function(mid){
     var m=document.getElementById(mid);
@@ -1325,28 +1331,22 @@ window.addEventListener('popstate',function(e){
     var ovs=document.querySelectorAll('.ov.on');
     if(ovs.length){ovs.forEach(function(o){o.classList.remove('on');});closed=true;}
   }
-  if(closed){ _armBackGuard(); return; }
-
-  // 2) Navigate one logical step back based on current screen
-  var cur=S.scr;
-  if(cur==='s-mc'||cur==='s-ev'||cur==='s-ann'){
-    nav('s-stu');
-  }else if(cur==='s-stu'){
-    nav('home');
-  }else if(cur&&cur!=='home'){
-    nav('home');
+  // 2) If nothing was closed, navigate one step back in the app
+  if(!closed){
+    var target=BACK_PARENT[S.scr];
+    if(target)nav(target);
+    // if no target (already home) → just stay
   }
-  // else: already home → do nothing (stay in app)
-
-  // 3) Re-arm the sentinel so the NEXT back press also fires popstate (never exits)
-  _armBackGuard();
+  // 3) ALWAYS re-arm the guard so the next back press also fires popstate
+  _armGuard();
 });
 
-// Initialize: one real state + one sentinel on top
+// Initialize the single guard entry
 try{
   history.replaceState({scr:'home'},'',location.href);
-  _armBackGuard();
+  _armGuard();
 }catch(e){}
+
 function updPill(scr){const idx=MAIN.indexOf(scr);document.querySelectorAll('.ni').forEach(b=>b.classList.toggle('on',b.dataset.s===scr));const p=document.getElementById('np');if(idx>=0&&p){const w=100/4;p.style.width='calc('+w+'% - 4px)';p.style.right='calc('+idx*w+'% + 2px)';}}
 function render(scr){if(scr==='settings')setTimeout(function(){updLockUI();updateCloudUI();},50);if(scr==='home')rHome();else if(scr==='acts')rActs();else if(scr==='s-stu')rStu();else if(scr==='s-mc')rMC();else if(scr==='s-ev')rEval();else if(scr==='s-ann')rAnnual();else if(scr==='scales')rScales();else if(scr==='settings')rSettings();}
 
@@ -2036,7 +2036,7 @@ Smart Sport · دلباز محمد · ${sch} · 2025-2026
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v50</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v53</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}
@@ -4245,16 +4245,11 @@ render('home');
 // ═══════════════════════════════════════════════════════
 // عدّل هذه القائمة عند كل تحديث جديد قبل النشر
 var CHANGELOG = {
-  version: 'v50',
-  date: '28 ماي 2026',
+  version: 'v53',
+  date: '29 ماي 2026',
   items: [
-    {ic:'⭐', t:'دور مزدوج للتلميذ', d:'يمكن أن يكون التلميذ قائداً ومسؤول عتاد معاً (+1 إبداع و +1 مشاركة)'},
-    {ic:'🎒', t:'تصحيح مكافأة العتاد', d:'مسؤول العتاد يُكافأ الآن بنقطة مشاركة بدل الإبداع'},
-    {ic:'🎙️', t:'إملاء صوتي للحضور', d:'سجّل حضور القسم كله بصوتك دون فتح أي تلميذ — بالعربية والدارجة'},
-    {ic:'⏱️', t:'كرونومتر أوضح', d:'لوحة تحكم مضغوطة وكل الحارات ظاهرة لإيقاف أسرع'},
-    {ic:'🔒', t:'حماية النقاط', d:'قفل اختياري يمنع التعديل العرضي على نقاط التلاميذ'},
-    {ic:'☁️', t:'مزامنة سحابية', d:'رفع وتنزيل بياناتك بين أجهزتك (اختياري)'},
-    {ic:'📱', t:'زر الرجوع', d:'زر رجوع الهاتف يتنقّل داخل التطبيق ولا يُخرجك منه'}
+    {ic:'📱', t:'إصلاح زر الرجوع', d:'زر رجوع الهاتف صار يتنقّل داخل التطبيق (الفرض ← التلميذ ← الرئيسية) ولا يُخرجك منه — مُحسّن خصيصاً للأيقونة المثبّتة'},
+    {ic:'🔔', t:'نافذة التحديث', d:'صارت تعرض نقاط التحديث الحالي فقط بدل تراكم النقاط القديمة'}
   ]
 };
 
