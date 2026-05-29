@@ -492,6 +492,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
       <div class="hinf" id="hdr-inf">— —</div>
     </div>
     <div class="hacts">
+      <button class="hb" onclick="openVoiceAttend()" title="إملاء الحضور صوتياً" style="background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(79,142,255,.18));border:1px solid rgba(124,58,237,.3)">🎙️</button>
       <button class="hb" id="undo-btn" onclick="undo()" title="تراجع" style="position:relative;opacity:.3;pointer-events:none"><span style="font-size:17px">↩️</span><span id="undo-cnt" style="position:absolute;top:2px;right:2px;background:var(--gold);color:#000;border-radius:99px;font-size:8px;font-weight:900;padding:1px 4px;display:none">0</span></button>
       <button class="hb" id="theme-btn" onclick="toggleTheme()" title="الوضع الليلي/النهاري">🌙</button>
       <button class="hb" onclick="nav('settings')"><svg><use href="#i-cog"/></svg></button>
@@ -503,6 +504,28 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
     </div>
     <div id="hbody"></div>
     <div class="sp28"></div>
+  </div>
+</div>
+
+<!-- GLOBAL VOICE ATTENDANCE OVERLAY -->
+<div id="va-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:linear-gradient(160deg,#0a0a1f,#0d0d2a);flex-direction:column">
+  <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">
+    <button onclick="closeVoiceAttend()" style="width:40px;height:40px;border-radius:12px;background:rgba(255,89,89,.12);border:1px solid rgba(255,89,89,.3);color:#ff5959;font-size:18px;cursor:pointer">✕</button>
+    <div style="flex:1">
+      <div style="font-size:15px;font-weight:900;color:#fff;font-family:var(--ff)">🎙️ إملاء الحضور</div>
+      <div id="va-ctx" style="font-size:11px;color:rgba(255,255,255,.5);font-weight:600">—</div>
+    </div>
+    <select id="va-cls" onchange="vaClassChange()" style="padding:9px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#fff;font-family:var(--ff);font-size:12px;font-weight:800;direction:rtl;max-width:130px"></select>
+  </div>
+  <div style="text-align:center;padding:16px;flex-shrink:0">
+    <button id="va-orb" onclick="vaToggle()" style="width:88px;height:88px;border-radius:50%;border:none;background:linear-gradient(135deg,#4f8eff,#7c3aed);color:#fff;font-size:38px;cursor:pointer;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;touch-action:manipulation">🎙️</button>
+    <div id="va-status" style="font-size:13px;font-weight:700;color:rgba(255,255,255,.6);font-family:var(--ff)">اضغط الميكروفون ثم نادِ بالاسم والحالة</div>
+    <div id="va-transcript" style="font-size:14px;color:#fff;min-height:20px;margin-top:6px;font-weight:700;font-family:var(--ff)"></div>
+    <div id="va-action" style="margin-top:8px;min-height:20px;display:flex;justify-content:center"></div>
+    <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:8px;font-family:var(--ff);line-height:1.7">مثال: «براهمي أسماء حاضر» · «خالد غايب» · «أمين مريض»<br>كل نداء يُسجّل في الحصة التالية للتلميذ تلقائياً</div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:0 12px 16px">
+    <div id="va-list"></div>
   </div>
 </div>
 
@@ -824,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v43 · 28 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v45 · 28 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -1258,25 +1281,72 @@ function toast(title,msg,type,dur){if(!type)type='su';if(!dur)dur=2800;const c=d
 
 // ROUTER
 const SMAP={home:'s-home',acts:'s-acts',scales:'s-scales',settings:'s-settings','s-stu':'s-stu','s-mc':'s-mc','s-ev':'s-ev','s-ann':'s-ann'};
-function nav(scr){var prevScr=S.scr;document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));const id=SMAP[scr]||scr;const el=document.getElementById(id||'s-home');if(el){el.classList.add('on');el.querySelector('.scrl')?.scrollTo(0,0);}S.scr=scr;const nw=document.getElementById('bnw');nw.style.display=MAIN.includes(scr)?'block':'none';updPill(scr);render(scr);if(scr==='home'&&prevScr&&prevScr!=='home')setTimeout(function(){rfrmFocus(true);},300);
-  // Push history state for phone back button
-  try{
-    if(scr!=='home'){history.pushState({scr:scr},'',location.href);}
-  }catch(e){}
+var _navInternal=false; // true when navigation is triggered by popstate (don't push)
+function nav(scr){
+  var prevScr=S.scr;
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
+  const id=SMAP[scr]||scr;
+  const el=document.getElementById(id||'s-home');
+  if(el){el.classList.add('on');el.querySelector('.scrl')?.scrollTo(0,0);}
+  S.scr=scr;
+  const nw=document.getElementById('bnw');
+  nw.style.display=MAIN.includes(scr)?'block':'none';
+  updPill(scr);
+  render(scr);
+  if(scr==='home'&&prevScr&&prevScr!=='home')setTimeout(function(){rfrmFocus(true);},300);
+  // Push a history entry for every screen change EXCEPT when responding to a back press
+  if(!_navInternal){
+    try{ history.pushState({scr:scr},'',location.href); }catch(e){}
+  }
 }
 
-// Handle phone hardware back button
+// Phone hardware back button → navigate inside the app, never exit
 window.addEventListener('popstate',function(e){
+  // 1) If any modal/overlay is open, close it first (don't change screen)
+  var closedSomething=false;
+  // full-screen modals
+  ['va-modal','sw4-modal','auth-modal','ov-iframe'].forEach(function(mid){
+    var m=document.getElementById(mid);
+    if(m&&(m.style.display==='flex'||m.style.display==='block')){
+      m.style.display='none';
+      if(mid==='va-modal'&&typeof vaStop==='function')vaStop();
+      if(mid==='sw4-modal'&&typeof closeSW4==='function'){/* closeSW4 sets display none already */}
+      closedSomething=true;
+    }
+  });
+  // generic overlays (.ov.on)
+  if(!closedSomething){
+    var openOvs=document.querySelectorAll('.ov.on');
+    if(openOvs.length){openOvs.forEach(function(o){o.classList.remove('on');});closedSomething=true;}
+  }
+  if(closedSomething){
+    try{ history.pushState({scr:S.scr||'home'},'',location.href); }catch(e){}
+    return;
+  }
+
+  // 2) Otherwise navigate screens
   var cur=S.scr;
-  // Sub-screens go back to student card or home
-  if(cur==='s-mc'||cur==='s-ev'||cur==='s-ann'){nav('s-stu');}
-  else if(cur==='s-stu'){nav('home');}
-  else if(cur&&cur!=='home'){nav('home');}
-  // prevent leaving app on home
-  if(cur==='home'){history.pushState({scr:'home'},'',location.href);}
+  var target=null;
+  if(cur==='s-mc'||cur==='s-ev'||cur==='s-ann')target='s-stu';
+  else if(cur==='s-stu')target='home';
+  else if(cur&&cur!=='home')target='home';
+  else target=null;
+
+  if(target){
+    _navInternal=true;
+    nav(target);
+    _navInternal=false;
+    try{ history.pushState({scr:target},'',location.href); }catch(e){}
+  } else {
+    try{ history.pushState({scr:'home'},'',location.href); }catch(e){}
+  }
 });
-// Init history
-try{history.replaceState({scr:'home'},'',location.href);history.pushState({scr:'home'},'',location.href);}catch(e){}
+
+// Initialize history with a guard entry so the first back press stays in-app
+try{
+  history.replaceState({scr:'home'},'',location.href);
+  history.pushState({scr:'home'},'',location.href);
+}catch(e){}
 function updPill(scr){const idx=MAIN.indexOf(scr);document.querySelectorAll('.ni').forEach(b=>b.classList.toggle('on',b.dataset.s===scr));const p=document.getElementById('np');if(idx>=0&&p){const w=100/4;p.style.width='calc('+w+'% - 4px)';p.style.right='calc('+idx*w+'% + 2px)';}}
 function render(scr){if(scr==='settings')setTimeout(function(){updLockUI();updateCloudUI();},50);if(scr==='home')rHome();else if(scr==='acts')rActs();else if(scr==='s-stu')rStu();else if(scr==='s-mc')rMC();else if(scr==='s-ev')rEval();else if(scr==='s-ann')rAnnual();else if(scr==='scales')rScales();else if(scr==='settings')rSettings();}
 
@@ -1983,7 +2053,7 @@ Smart EPS v5 · دلباز محمد · ثانوية سماحي بوعمامة ·
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v43</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v45</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}
@@ -2735,8 +2805,159 @@ function processVoiceCommand(txt){
   try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=status==='absent'?320:status==='sick'?440:600;g.gain.setValueAtTime(.06,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.25);o.start();o.stop(ctx.currentTime+.25);}catch(e){}
 }
 
-// DRAG & DROP CLASSES
-let dragClsId=null;
+// ═══════════════════════════════════════════════════════
+// 🎙️ GLOBAL VOICE ATTENDANCE (from roster, no per-student open)
+// ═══════════════════════════════════════════════════════
+var VA_active=false, VA_recog=null, VA_cid=null;
+
+function openVoiceAttend(){
+  if(D.classes.length===0){toast('تنبيه','أضف قسماً أولاً','wa');return;}
+  VA_cid=S.cid||D.classes[0].id;
+  // populate class dropdown
+  var sel=document.getElementById('va-cls');
+  sel.innerHTML=D.classes.map(function(c){return '<option value="'+c.id+'"'+(c.id===VA_cid?' selected':'')+'>'+c.name+'</option>';}).join('');
+  vaUpdateCtx();
+  vaRenderList();
+  document.getElementById('va-modal').style.display='flex';
+}
+function closeVoiceAttend(){
+  vaStop();
+  document.getElementById('va-modal').style.display='none';
+  if(S.scr==='home')rHome();
+}
+function vaClassChange(){
+  VA_cid=document.getElementById('va-cls').value;
+  S.cid=VA_cid;
+  vaUpdateCtx();vaRenderList();
+}
+function vaUpdateCtx(){
+  var cls=GC(VA_cid);
+  var ctx=document.getElementById('va-ctx');
+  if(ctx)ctx.textContent=(cls?cls.name:'—')+' · '+TLB[S.term||'t1']+' · '+(D.students.filter(s=>s.classId===VA_cid).length)+' تلميذ';
+}
+function vaToggle(){
+  if(VA_active){vaStop();return;}
+  const SRA=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SRA){document.getElementById('va-status').textContent='⚠️ استعمل متصفح Chrome';return;}
+  VA_recog=new SRA();
+  VA_recog.lang='ar-DZ';   // Algerian Arabic; falls back to ar automatically
+  VA_recog.continuous=true;
+  VA_recog.interimResults=true;
+  VA_recog.maxAlternatives=5;
+  VA_recog.onstart=function(){
+    VA_active=true;
+    var orb=document.getElementById('va-orb');
+    if(orb){orb.innerHTML='🔴';orb.style.animation='micRing 1.2s ease-out infinite';}
+    document.getElementById('va-status').innerHTML='<span style="color:#00d97e">🎙️ يسمعك... نادِ بالاسم والحالة</span>';
+    if(navigator.vibrate)navigator.vibrate(80);
+  };
+  VA_recog.onresult=function(e){
+    var final='',interim='';
+    for(var i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    var txt=(final||interim).trim();
+    var el=document.getElementById('va-transcript');
+    if(el&&txt)el.textContent=txt;
+    if(final.trim())vaProcess(final.trim());
+  };
+  VA_recog.onerror=function(e){
+    var orb=document.getElementById('va-orb');
+    if(orb){orb.innerHTML='🎙️';orb.style.animation='';}
+    if(e.error==='not-allowed'){VA_active=false;document.getElementById('va-status').innerHTML='<span style="color:#ff5959">🔒 الإذن مرفوض — اسمح للميكروفون</span>';}
+    else if(e.error==='network')document.getElementById('va-status').innerHTML='<span style="color:#f5b932">📶 الإملاء الصوتي يحتاج إنترنت</span>';
+  };
+  VA_recog.onend=function(){
+    if(VA_active){setTimeout(function(){try{VA_recog.start();}catch(x){}},200);}
+    else{var orb=document.getElementById('va-orb');if(orb){orb.innerHTML='🎙️';orb.style.animation='';}}
+  };
+  try{VA_recog.start();}catch(e){}
+}
+function vaStop(){
+  VA_active=false;
+  if(VA_recog){try{VA_recog.stop();}catch(e){}}
+  var orb=document.getElementById('va-orb');
+  if(orb){orb.innerHTML='🎙️';orb.style.animation='';}
+  var st=document.getElementById('va-status');
+  if(st)st.textContent='اضغط الميكروفون ثم نادِ بالاسم والحالة';
+}
+
+function vaProcess(txt){
+  var norm=txt.replace(/[\u064B-\u065F]/g,'').replace(/[إأآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase().trim();
+  var status=null;
+  if(ABSENT_WORDS.some(function(w){return norm.includes(w);}))status='absent';
+  else if(SICK_WORDS.some(function(w){return norm.includes(w);}))status='sick';
+  else if(PRESENT_WORDS.some(function(w){return norm.includes(w);}))status='present';
+  if(!status){vaFlash('قل الحالة: حاضر / غائب / مريض','#f5b932');return;}
+
+  var students=D.students.filter(function(s){return s.classId===VA_cid;});
+  if(!students.length){vaFlash('لا تلاميذ في هذا القسم','#ff5959');return;}
+
+  var namePart=norm;
+  [].concat(ABSENT_WORDS,SICK_WORDS,PRESENT_WORDS).forEach(function(w){namePart=namePart.split(w).join(' ');});
+  namePart=namePart.replace(/\s+/g,' ').trim();
+  if(!namePart){vaFlash('لم أسمع الاسم','#f5b932');return;}
+
+  // Fuzzy name match (normalize student names the same way)
+  var best=null,bestScore=0;
+  students.forEach(function(s){
+    var sn=s.name.replace(/[\u064B-\u065F]/g,'').replace(/[إأآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase();
+    var score=0;
+    sn.split(' ').forEach(function(p){if(p.length>1&&namePart.includes(p))score+=p.length;});
+    namePart.split(' ').forEach(function(p){if(p.length>1&&sn.includes(p))score+=p.length;});
+    if(score>bestScore){bestScore=score;best=s;}
+  });
+  if(!best||bestScore<2){vaFlash('ما لقيتش: "'+namePart+'"','#ff5959');if(navigator.vibrate)navigator.vibrate([50,30,50]);return;}
+
+  // Fill the NEXT chronological session slot for this student
+  initStu(best);
+  var t=best.terms[S.term||'t1'];
+  if(!t.mc.ses||!t.mc.ses.length)t.mc.ses=[2,2,2,2,2,2,2];
+  // track per-student fill pointer
+  best._vaPtr=(typeof best._vaPtr==='number')?best._vaPtr:0;
+  var slot=best._vaPtr;
+  if(slot>=t.mc.ses.length)slot=t.mc.ses.length-1;
+  t.mc.ses[slot]=status==='absent'?0:status==='sick'?1:2;
+  best._vaPtr=slot+1; // advance for next time
+  SD();
+
+  var ic=status==='absent'?'🔴':status==='sick'?'🟡':'🟢';
+  var lbl=status==='absent'?'غائب':status==='sick'?'مريض':'حاضر';
+  var col=status==='absent'?'#ff5959':status==='sick'?'#f5b932':'#00d97e';
+  document.getElementById('va-action').innerHTML='<div style="background:rgba(0,0,0,.3);border:1px solid '+col+';border-radius:12px;padding:8px 16px;display:inline-flex;align-items:center;gap:10px"><span style="font-size:22px">'+ic+'</span><div style="text-align:right"><div style="color:'+col+';font-size:14px;font-weight:900;font-family:var(--ff)">'+best.name+'</div><div style="color:rgba(255,255,255,.5);font-size:11px;font-family:var(--ff)">'+lbl+' · الحصة '+(slot+1)+'</div></div></div>';
+  if(navigator.vibrate)navigator.vibrate(120);
+  try{var ctx=new(window.AudioContext||window.webkitAudioContext)();var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=status==='absent'?320:status==='sick'?440:640;g.gain.setValueAtTime(.07,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.25);o.start();o.stop(ctx.currentTime+.25);}catch(e){}
+  vaRenderList();
+}
+
+function vaFlash(msg,col){
+  var el=document.getElementById('va-action');
+  if(el)el.innerHTML='<div style="color:'+(col||'#f5b932')+';font-size:12px;font-weight:700;font-family:var(--ff)">'+msg+'</div>';
+}
+
+function vaRenderList(){
+  var list=document.getElementById('va-list');if(!list)return;
+  var students=D.students.filter(function(s){return s.classId===VA_cid;});
+  if(!students.length){list.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);padding:30px;font-family:var(--ff)">لا تلاميذ</div>';return;}
+  var tk=S.term||'t1';
+  var h='';
+  students.forEach(function(s){
+    initStu(s);
+    var ses=s.terms[tk].mc.ses||[];
+    var ptr=(typeof s._vaPtr==='number')?s._vaPtr:0;
+    // session dots
+    var dots='';
+    ses.forEach(function(v,i){
+      var c=v===0?'#ff5959':v===1?'#f5b932':'#00d97e';
+      var done=i<ptr;
+      dots+='<span style="width:14px;height:14px;border-radius:4px;background:'+(done?c:'rgba(255,255,255,.08)')+';display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;border:'+(done?'none':'1px solid rgba(255,255,255,.12)')+'">'+(done?(v===0?'غ':v===1?'م':'ح'):(i+1))+'</span>';
+    });
+    var m=s.gender==='male';
+    h+='<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.05)"><div style="width:30px;height:30px;border-radius:50%;background:'+(m?'rgba(78,165,255,.18)':'rgba(232,121,249,.18)')+';color:'+(m?'#4ea5ff':'#e879f9')+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">'+inits(s.name)+'</div><div style="flex:1;font-size:13px;font-weight:700;color:#fff;font-family:var(--ff);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.name+'</div><div style="display:flex;gap:3px;flex-shrink:0">'+dots+'</div></div>';
+  });
+  list.innerHTML=h;
+}
 function initClsDrag(){
   const tabs=document.querySelectorAll('.ctab[data-cid]');
   tabs.forEach(tab=>{
