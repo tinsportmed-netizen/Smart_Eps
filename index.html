@@ -1324,22 +1324,11 @@ window.addEventListener('popstate',function(e){
     return;
   }
 
-  // 2) Otherwise navigate screens
-  var cur=S.scr;
-  var target=null;
-  if(cur==='s-mc'||cur==='s-ev'||cur==='s-ann')target='s-stu';
-  else if(cur==='s-stu')target='home';
-  else if(cur&&cur!=='home')target='home';
-  else target=null;
-
-  if(target){
-    _navInternal=true;
-    nav(target);
-    _navInternal=false;
-    try{ history.pushState({scr:target},'',location.href); }catch(e){}
-  } else {
-    try{ history.pushState({scr:'home'},'',location.href); }catch(e){}
-  }
+  // 2) Otherwise navigate screens using the popped history state
+  var target = (e.state && e.state.scr) ? e.state.scr : 'home';
+  _navInternal = true;
+  nav(target);
+  _navInternal = false;
 });
 
 // Initialize history with a guard entry so the first back press stays in-app
