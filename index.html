@@ -847,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v55 · 29 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v56 · 29 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -1302,18 +1302,21 @@ function nav(scr){
   updPill(scr);
   render(scr);
   if(scr==='home'&&prevScr&&prevScr!=='home')setTimeout(function(){rfrmFocus(true);},300);
+  // Push a history entry for every FORWARD navigation (not when going back)
+  if(!_suppressPush){
+    try{ history.pushState({scr:scr},'',location.href); }catch(e){}
+  }
 }
 
 // ═══════════════════════════════════════════════════════
-// 📱 PHONE BACK BUTTON (PWA standalone safe)
-// Single-guard pattern: history stays exactly 1 entry deep so the
-// OS can never run out and close the app.
+// 📱 PHONE BACK BUTTON (PWA standalone)
+// nav() pushes one entry per forward navigation; back consumes
+// them one by one. At home, re-push a guard so the app never exits.
 // ═══════════════════════════════════════════════════════
-function _armGuard(){
-  try{ history.pushState({g:1},'',location.href); }catch(e){}
-}
+var _suppressPush=false;
 
 window.addEventListener('popstate',function(e){
+  // 1) Close any open modal/overlay first
   var closed=false;
   ['va-modal','sw4-modal','auth-modal','ov-iframe'].forEach(function(mid){
     var m=document.getElementById(mid);
@@ -1327,16 +1330,26 @@ window.addEventListener('popstate',function(e){
     var ovs=document.querySelectorAll('.ov.on');
     if(ovs.length){ovs.forEach(function(o){o.classList.remove('on');});closed=true;}
   }
-  if(!closed){
-    var target=BACK_PARENT[S.scr];
-    if(target)nav(target);
+  if(closed){
+    try{ history.pushState({scr:S.scr},'',location.href); }catch(e){}
+    return;
   }
-  _armGuard();
+  // 2) Navigate one logical step back (without pushing)
+  var target=BACK_PARENT[S.scr];
+  if(target){
+    _suppressPush=true;
+    nav(target);
+    _suppressPush=false;
+  }else{
+    // at home → re-push guard so app stays open (never exits)
+    try{ history.pushState({scr:'home'},'',location.href); }catch(e){}
+  }
 });
 
+// Initialize: base home entry + one guard on top
 try{
   history.replaceState({scr:'home'},'',location.href);
-  _armGuard();
+  history.pushState({scr:'home'},'',location.href);
 }catch(e){}
 
 function updPill(scr){const idx=MAIN.indexOf(scr);document.querySelectorAll('.ni').forEach(b=>b.classList.toggle('on',b.dataset.s===scr));const p=document.getElementById('np');if(idx>=0&&p){const w=100/4;p.style.width='calc('+w+'% - 4px)';p.style.right='calc('+idx*w+'% + 2px)';}}
@@ -2028,7 +2041,7 @@ Smart Sport · دلباز محمد · ${sch} · 2025-2026
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v55</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v56</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}
