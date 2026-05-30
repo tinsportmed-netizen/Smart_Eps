@@ -69,15 +69,17 @@ const firebaseConfig = {
   appId: "1:971014506903:web:938189a7d23b5c3f7a5cd2"
 };
 // ═══════════════════════════════════════
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+function showFatal(msg){
+  var e=document.getElementById('err');
+  if(e){e.textContent=msg; e.style.display='block';}
+  console.error(msg);
+}
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+let initializeApp, getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getFirestore, collection, getDocs;
+let app, auth, db, fbReady=false;
 
 function login(){
+  if(!fbReady){ showFatal('Firebase لم يُحمّل بعد. انتظر لحظة ثم أعد المحاولة، أو تحقق من الإنترنت.'); return; }
   const email=document.getElementById('email').value.trim();
   const pass=document.getElementById('pass').value;
   document.getElementById('err').textContent='';
@@ -85,20 +87,36 @@ function login(){
     document.getElementById('err').textContent='فشل الدخول: '+(e.code||e.message);
   });
 }
-function logout(){ signOut(auth); }
+function logout(){ if(fbReady) signOut(auth); }
 
-// ربط الأزرار من داخل الوحدة (يضمن جاهزية الدوال قبل أي ضغط)
+// ربط الأزرار فوراً — تستجيب دائماً حتى قبل تحميل Firebase
 document.getElementById('btn-login').addEventListener('click',login);
 document.getElementById('btn-logout').addEventListener('click',logout);
-document.getElementById('btn-refresh').addEventListener('click',loadData);
-// السماح بالدخول بمفتاح Enter
+document.getElementById('btn-refresh').addEventListener('click',()=>loadData());
 document.getElementById('pass').addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
 
-onAuthStateChanged(auth,user=>{
-  document.getElementById('login-card').style.display=user?'none':'block';
-  document.getElementById('dash').style.display=user?'block':'none';
-  if(user)loadData();
-});
+// كشف فتح الملف محلياً
+if(location.protocol==='file:'){
+  showFatal('⚠️ افتح هذه الصفحة عبر رابط https (Netlify)، وليس من الملف مباشرة. وحدات Firebase لا تعمل عبر file://');
+}
+
+// تحميل Firebase
+try{
+  ({ initializeApp } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js"));
+  ({ getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js"));
+  ({ getFirestore, collection, getDocs } = await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js"));
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  fbReady=true;
+  onAuthStateChanged(auth,user=>{
+    document.getElementById('login-card').style.display=user?'none':'block';
+    document.getElementById('dash').style.display=user?'block':'none';
+    if(user)loadData();
+  });
+}catch(err){
+  showFatal('فشل تحميل Firebase: '+(err.message||err)+' — تحقق من اتصال الإنترنت.');
+}
 
 async function loadData(){
   try{
