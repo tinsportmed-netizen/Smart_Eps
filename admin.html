@@ -34,7 +34,7 @@ td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06)}
     <h3 style="margin-bottom:12px">تسجيل دخول المطوّر</h3>
     <input id="email" type="email" placeholder="بريد المطوّر">
     <input id="pass" type="password" placeholder="كلمة السر">
-    <button onclick="login()">دخول</button>
+    <button id="btn-login">دخول</button>
     <div class="err" id="err"></div>
   </div>
 
@@ -47,14 +47,14 @@ td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06)}
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3>قائمة الأساتذة</h3>
-        <button onclick="loadData()" style="padding:8px 14px;font-size:12px">🔄 تحديث</button>
+        <button id="btn-refresh" style="padding:8px 14px;font-size:12px">🔄 تحديث</button>
       </div>
       <table>
         <thead><tr><th>البريد</th><th>الثانوية</th><th>الأقسام</th><th>التلاميذ</th><th>آخر مزامنة</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
-    <button onclick="logout()" style="background:rgba(255,89,89,.15);border:1px solid rgba(255,89,89,.3);color:#ff5959">🚪 خروج</button>
+    <button id="btn-logout" style="background:rgba(255,89,89,.15);border:1px solid rgba(255,89,89,.3);color:#ff5959">🚪 خروج</button>
   </div>
 </div>
 
@@ -77,15 +77,22 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-window.login = function(){
+function login(){
   const email=document.getElementById('email').value.trim();
   const pass=document.getElementById('pass').value;
   document.getElementById('err').textContent='';
   signInWithEmailAndPassword(auth,email,pass).catch(e=>{
     document.getElementById('err').textContent='فشل الدخول: '+(e.code||e.message);
   });
-};
-window.logout = function(){ signOut(auth); };
+}
+function logout(){ signOut(auth); }
+
+// ربط الأزرار من داخل الوحدة (يضمن جاهزية الدوال قبل أي ضغط)
+document.getElementById('btn-login').addEventListener('click',login);
+document.getElementById('btn-logout').addEventListener('click',logout);
+document.getElementById('btn-refresh').addEventListener('click',loadData);
+// السماح بالدخول بمفتاح Enter
+document.getElementById('pass').addEventListener('keydown',e=>{ if(e.key==='Enter')login(); });
 
 onAuthStateChanged(auth,user=>{
   document.getElementById('login-card').style.display=user?'none':'block';
@@ -93,7 +100,7 @@ onAuthStateChanged(auth,user=>{
   if(user)loadData();
 });
 
-window.loadData = async function(){
+async function loadData(){
   try{
     const snap=await getDocs(collection(db,'teachers'));
     let totalClasses=0,totalStudents=0,rows='';
@@ -116,7 +123,7 @@ window.loadData = async function(){
   }catch(e){
     document.getElementById('rows').innerHTML=`<tr><td colspan="5" class="err">خطأ: ${e.code||e.message}<br>تأكد أن بريدك مُدرج في قواعد الأمان</td></tr>`;
   }
-};
+}
 </script>
 </body>
 </html>
