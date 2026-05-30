@@ -847,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v58 · 30 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v59 · 30 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -2041,7 +2041,7 @@ Smart Sport · دلباز محمد · ${sch} · 2025-2026
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v58</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v59</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}
@@ -4240,23 +4240,10 @@ function closeScEditor(){
   var scrl=document.querySelector('#s-scales .scrl');
   if(scrl)scrl.scrollTo({top:0,behavior:'smooth'});
 }
-// ═══ مصيدة أخطاء مرئية + ربط احتياطي لزر الدخول ═══
-window.addEventListener('error',function(ev){
-  try{
-    var box=document.getElementById('__errbox');
-    if(!box){
-      box=document.createElement('div');
-      box.id='__errbox';
-      box.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#c0392b;color:#fff;font:12px/1.5 monospace;padding:10px;border-radius:10px;max-height:40vh;overflow:auto;direction:ltr;text-align:left;white-space:pre-wrap';
-      box.onclick=function(){box.remove();};
-      document.body.appendChild(box);
-    }
-    box.textContent='⚠️ JS Error (tap to hide):\n'+(ev.message||'')+'\n'+(ev.filename||'')+':'+(ev.lineno||'');
-  }catch(e){}
-});
+// ربط احتياطي صامت لزر الدخول (يضمن استجابة الزر دائماً)
 (function(){
   var b=document.getElementById('btn-open-auth');
-  if(b){ b.addEventListener('click',function(){ try{openAuthModal();}catch(e){alert('خطأ فتح النافذة: '+e.message);} }); }
+  if(b){ b.addEventListener('click',function(){ try{openAuthModal();}catch(e){} }); }
 })();
 render('home');
 
