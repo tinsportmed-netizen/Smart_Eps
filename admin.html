@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم Smart Sport</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,'Segoe UI',Tahoma,sans-serif;background:#0a0a1a;color:#e8e8f0;direction:rtl;padding:20px;min-height:100vh}
+.wrap{max-width:900px;margin:0 auto}
+h1{font-size:22px;color:#00d97e;margin-bottom:4px}
+.sub{font-size:12px;color:#8888aa;margin-bottom:20px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:20px;margin-bottom:16px}
+input{width:100%;padding:12px;margin-bottom:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font-size:14px;direction:ltr;text-align:left}
+button{padding:12px 20px;background:linear-gradient(135deg,#00875a,#00d97e);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+button:hover{opacity:.9}
+.stat{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.stat-box{flex:1;min-width:120px;background:rgba(0,217,126,.08);border:1px solid rgba(0,217,126,.2);border-radius:14px;padding:16px;text-align:center}
+.stat-num{font-size:28px;font-weight:900;color:#00d97e}
+.stat-lbl{font-size:11px;color:#8888aa;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:rgba(0,217,126,.12);color:#00d97e;padding:10px;text-align:right;font-weight:800}
+td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06)}
+.muted{color:#8888aa;font-size:11px}
+.err{color:#ff5959;font-size:12px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛡️ لوحة تحكم المطوّر</h1>
+  <div class="sub">Smart Sport · إدارة الأساتذة المسجّلين</div>
+
+  <div class="card" id="login-card">
+    <h3 style="margin-bottom:12px">تسجيل دخول المطوّر</h3>
+    <input id="email" type="email" placeholder="بريد المطوّر">
+    <input id="pass" type="password" placeholder="كلمة السر">
+    <button onclick="login()">دخول</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="dash" style="display:none">
+    <div class="stat">
+      <div class="stat-box"><div class="stat-num" id="n-teachers">—</div><div class="stat-lbl">أستاذ مسجّل</div></div>
+      <div class="stat-box"><div class="stat-num" id="n-classes">—</div><div class="stat-lbl">قسم</div></div>
+      <div class="stat-box"><div class="stat-num" id="n-students">—</div><div class="stat-lbl">تلميذ</div></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3>قائمة الأساتذة</h3>
+        <button onclick="loadData()" style="padding:8px 14px;font-size:12px">🔄 تحديث</button>
+      </div>
+      <table>
+        <thead><tr><th>البريد</th><th>الثانوية</th><th>الأقسام</th><th>التلاميذ</th><th>آخر مزامنة</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <button onclick="logout()" style="background:rgba(255,89,89,.15);border:1px solid rgba(255,89,89,.3);color:#ff5959">🚪 خروج</button>
+  </div>
+</div>
+
+<script type="module">
+// ═══ الصق نفس مفاتيح Firebase هنا ═══
+const firebaseConfig = {
+  apiKey: "AIzaSyBfAQxhplKvKXxkDt4xO_c9Kxk3WLua13M",
+  authDomain: "smartsport32-b6d0a.firebaseapp.com",
+  projectId: "smartsport32-b6d0a",
+  storageBucket: "smartsport32-b6d0a.firebasestorage.app",
+  messagingSenderId: "971014506903",
+  appId: "1:971014506903:web:938189a7d23b5c3f7a5cd2"
+};
+// ═══════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+window.login = function(){
+  const email=document.getElementById('email').value.trim();
+  const pass=document.getElementById('pass').value;
+  document.getElementById('err').textContent='';
+  signInWithEmailAndPassword(auth,email,pass).catch(e=>{
+    document.getElementById('err').textContent='فشل الدخول: '+(e.code||e.message);
+  });
+};
+window.logout = function(){ signOut(auth); };
+
+onAuthStateChanged(auth,user=>{
+  document.getElementById('login-card').style.display=user?'none':'block';
+  document.getElementById('dash').style.display=user?'block':'none';
+  if(user)loadData();
+});
+
+window.loadData = async function(){
+  try{
+    const snap=await getDocs(collection(db,'teachers'));
+    let totalClasses=0,totalStudents=0,rows='';
+    snap.forEach(docu=>{
+      const d=docu.data();
+      let parsed={};
+      try{ parsed=JSON.parse(d.data||'{}'); }catch(e){}
+      const cls=(parsed.classes||[]).length;
+      const stu=(parsed.students||[]).length;
+      const school=(parsed.settings&&parsed.settings.school)||'—';
+      totalClasses+=cls; totalStudents+=stu;
+      let when='—';
+      if(d.updatedAt&&d.updatedAt.toDate){ when=d.updatedAt.toDate().toLocaleString('ar'); }
+      rows+=`<tr><td>${d.email||docu.id}</td><td>${school}</td><td>${cls}</td><td>${stu}</td><td class="muted">${when}</td></tr>`;
+    });
+    document.getElementById('n-teachers').textContent=snap.size;
+    document.getElementById('n-classes').textContent=totalClasses;
+    document.getElementById('n-students').textContent=totalStudents;
+    document.getElementById('rows').innerHTML=rows||'<tr><td colspan="5" class="muted" style="text-align:center;padding:20px">لا يوجد أساتذة بعد</td></tr>';
+  }catch(e){
+    document.getElementById('rows').innerHTML=`<tr><td colspan="5" class="err">خطأ: ${e.code||e.message}<br>تأكد أن بريدك مُدرج في قواعد الأمان</td></tr>`;
+  }
+};
+</script>
+</body>
+</html>
