@@ -847,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v54 · 29 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v55 · 29 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -1306,35 +1306,14 @@ function nav(scr){
 
 // ═══════════════════════════════════════════════════════
 // 📱 PHONE BACK BUTTON (PWA standalone safe)
-// Strategy: keep EXACTLY ONE guard entry on top at all times.
+// Single-guard pattern: history stays exactly 1 entry deep so the
+// OS can never run out and close the app.
 // ═══════════════════════════════════════════════════════
-// ── TEMPORARY DIAGNOSTIC PANEL (remove after debugging) ──
-var DIAG_ON=true;
-function diag(msg){
-  if(!DIAG_ON)return;
-  var box=document.getElementById('diag-box');
-  if(!box){
-    box=document.createElement('div');
-    box.id='diag-box';
-    box.style.cssText='position:fixed;top:60px;left:6px;right:6px;z-index:100001;background:rgba(0,0,0,.88);color:#0f0;font-family:monospace;font-size:10px;padding:8px;border-radius:8px;max-height:160px;overflow-y:auto;direction:ltr;text-align:left;border:1px solid #0f0;line-height:1.5';
-    document.body.appendChild(box);
-    var btn=document.createElement('button');
-    btn.textContent='✕ إخفاء التشخيص';
-    btn.style.cssText='position:fixed;top:44px;left:6px;z-index:100002;background:#c00;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:800';
-    btn.onclick=function(){box.remove();btn.remove();DIAG_ON=false;};
-    document.body.appendChild(btn);
-  }
-  var t=new Date().toLocaleTimeString();
-  box.innerHTML='['+t+'] '+msg+'<br>'+box.innerHTML;
-}
-
 function _armGuard(){
-  try{ history.pushState({g:1},'',location.href); diag('armGuard → len='+history.length); }catch(e){ diag('armGuard ERR: '+e.message); }
+  try{ history.pushState({g:1},'',location.href); }catch(e){}
 }
 
 window.addEventListener('popstate',function(e){
-  diag('POPSTATE fired! scr='+S.scr+' state='+JSON.stringify(e.state)+' histLen='+history.length);
-  // 1) Close any open modal/overlay first
   var closed=false;
   ['va-modal','sw4-modal','auth-modal','ov-iframe'].forEach(function(mid){
     var m=document.getElementById(mid);
@@ -1348,29 +1327,17 @@ window.addEventListener('popstate',function(e){
     var ovs=document.querySelectorAll('.ov.on');
     if(ovs.length){ovs.forEach(function(o){o.classList.remove('on');});closed=true;}
   }
-  if(closed)diag('→ closed a modal/overlay');
-  // 2) If nothing was closed, navigate one step back in the app
   if(!closed){
     var target=BACK_PARENT[S.scr];
-    diag('→ BACK_PARENT['+S.scr+'] = '+target);
     if(target)nav(target);
   }
-  // 3) ALWAYS re-arm the guard
   _armGuard();
 });
 
-// Detect display mode
-window.addEventListener('load',function(){
-  var mode=window.matchMedia('(display-mode: standalone)').matches?'standalone(مثبّت)':(navigator.standalone?'ios-standalone':'browser(متصفح)');
-  diag('وضع العرض: '+mode+' | proto='+location.protocol);
-});
-
-// Initialize the single guard entry
 try{
   history.replaceState({scr:'home'},'',location.href);
   _armGuard();
-  diag('INIT done. histLen='+history.length);
-}catch(e){ diag('INIT ERR: '+e.message); }
+}catch(e){}
 
 function updPill(scr){const idx=MAIN.indexOf(scr);document.querySelectorAll('.ni').forEach(b=>b.classList.toggle('on',b.dataset.s===scr));const p=document.getElementById('np');if(idx>=0&&p){const w=100/4;p.style.width='calc('+w+'% - 4px)';p.style.right='calc('+idx*w+'% + 2px)';}}
 function render(scr){if(scr==='settings')setTimeout(function(){updLockUI();updateCloudUI();},50);if(scr==='home')rHome();else if(scr==='acts')rActs();else if(scr==='s-stu')rStu();else if(scr==='s-mc')rMC();else if(scr==='s-ev')rEval();else if(scr==='s-ann')rAnnual();else if(scr==='scales')rScales();else if(scr==='settings')rSettings();}
@@ -2061,7 +2028,7 @@ Smart Sport · دلباز محمد · ${sch} · 2025-2026
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v54</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v55</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}
