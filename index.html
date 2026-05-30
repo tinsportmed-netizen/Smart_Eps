@@ -847,7 +847,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
         <div class="ail">التطبيق الاحترافي لأساتذة التربية البدنية والرياضية</div>
         <div style="height:14px"></div>
         <div class="ail">المطور: <strong style="color:var(--g)">Delbaz_Med</strong></div>
-        <div class="ail">الإصدار: <strong style="color:var(--gold)">v59 · 30 Mai 2026</strong></div>
+        <div class="ail">الإصدار: <strong style="color:var(--gold)">v60 · 30 Mai 2026</strong></div>
         <div class="ail" style="margin-top:4px">EPS · DZ · 2026</div>
       </div>
     </div>
@@ -872,6 +872,7 @@ body{max-width:480px;margin:0 auto;display:flex;flex-direction:column;-webkit-fo
           </div>
           <button onclick="cloudLogout()" style="width:100%;padding:9px;background:rgba(255,89,89,.1);border:1px solid rgba(255,89,89,.25);border-radius:10px;color:#ff5959;font-family:var(--ff);font-size:11px;font-weight:700;cursor:pointer">🚪 تسجيل الخروج</button>
         </div>
+        <button id="dev-panel-btn" onclick="openDevPanel()" style="display:none;width:100%;margin-top:10px;padding:11px;background:linear-gradient(135deg,#6d28d9,#a78bfa);border:none;border-radius:11px;color:#fff;font-family:var(--ff);font-size:12px;font-weight:800;cursor:pointer;touch-action:manipulation">🛡️ لوحة تحكم المطوّر</button>
       </div>
       <button id="grade-lock-btn" onclick="toggleGradeLock()" style="width:100%;padding:15px;margin-bottom:12px;border:none;border-radius:14px;font-family:var(--ff);font-size:14px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,#00875a,#00d97e);color:#fff;touch-action:manipulation">🔓 حماية نقاط التلاميذ</button>
       <div style="font-size:10px;color:var(--tx3);text-align:center;margin-bottom:16px;line-height:1.6">عند التفعيل تُمنع كل التعديلات على نقاط المراقبة المستمرة والفرض والاختبار — للحماية من التغيير العرضي</div>
@@ -1175,6 +1176,12 @@ function updateCloudUI(){
     if(out)out.style.display='block';
     if(inn)inn.style.display='none';
   }
+  // زر لوحة المطوّر: يظهر فقط لحساب المطوّر
+  var dev=document.getElementById('dev-panel-btn');
+  if(dev){
+    var isDev=FB_USER && FB_USER.email==='delbazsportmed@gmail.com';
+    dev.style.display=isDev?'block':'none';
+  }
 }
 
 function openAuthModal(){
@@ -1182,6 +1189,10 @@ function openAuthModal(){
   AUTH_MODE='login';
   syncAuthModeUI();
   document.getElementById('auth-modal').style.display='flex';
+}
+function openDevPanel(){
+  // يفتح لوحة المطوّر في نفس المجلد على الموقع
+  window.open('admin.html','_blank');
 }
 function closeAuthModal(){document.getElementById('auth-modal').style.display='none';}
 function authToggleMode(){AUTH_MODE=(AUTH_MODE==='login')?'signup':'login';syncAuthModeUI();}
@@ -2041,7 +2052,7 @@ Smart Sport · دلباز محمد · ${sch} · 2025-2026
 </div>
 
 <!-- VERSION BADGE -->
-<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v59</div>
+<div id="ver-badge" style="position:fixed;bottom:90px;left:8px;z-index:40;background:rgba(0,0,0,.5);color:rgba(255,255,255,.6);font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;font-family:monospace;pointer-events:none">v60</div>
 </body></html>`;
   const w=window.open('','_blank','width=420,height=700');
   if(w){w.document.write(html);w.document.close();}

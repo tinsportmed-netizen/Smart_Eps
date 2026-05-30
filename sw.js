@@ -1,5 +1,5 @@
 // Smart EPS Service Worker - Network First + Update Notification
-const CACHE = 'smart-eps-v59';
+const CACHE = 'smart-eps-v60';
 const APP_VERSION = '2.1';
 
 self.addEventListener('install', e => {
